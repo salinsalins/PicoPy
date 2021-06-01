@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-PicoScope PicoLog1216 tango device server"""
+PicoLog1216 tango device server"""
 
 import sys
 import os
@@ -18,7 +18,10 @@ import winsound
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command, pipe, device_property
-#from Utils import *
+# from Utils import *
+import ctypes
+from picosdk.pl1000 import pl1000 as pl
+from picosdk.functions import adc2mVpl1000, assert_pico_ok
 
 NaN = float('nan')
 
@@ -45,7 +48,7 @@ class PicoPyServer(Device):
                            display_level=DispLevel.OPERATOR,
                            access=AttrWriteType.READ,
                            unit="", format="%s",
-                           doc="PicoScope PicoLog1216 tango device server")
+                           doc="PicoLog1216 tango device server")
 
     lastshottime = attribute(label="Last_shot_time", dtype=float,
                              display_level=DispLevel.OPERATOR,
@@ -59,54 +62,61 @@ class PicoPyServer(Device):
                            unit=" .", format="%d",
                            doc="Number of the last shot")
 
-    rfready = attribute(label="RF_Ready", dtype=bool,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="", format="",
-                        doc="Readiness of RF system")
+    ready = attribute(label="Ready", dtype=bool,
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ,
+                      unit="", format="",
+                      doc="Readiness of PicoLog1216")
 
     def init_device(self):
         # print(time_ms(), 'init_device entry', self)
-        self.device_type_str = 'PicoScope PicoLog1216 tango device server'
-        self.last_shot_time = -1.0
-        self.last_shot = -2
-        self.device_name = self.get_name()
-        self.device_proxy = tango.DeviceProxy(self.device_name)
-        # read config from device properties
-        level = self.get_device_property('log_level', 10)
-        self.logger.setLevel(level)
-        self.timer_name = self.get_device_property('timer_name', 'binp/nbi/timing')
-        self.adc_name = self.get_device_property('adc_name', 'binp/nbi/adc0')
-        # create auxiliary devices
         try:
-            self.timer_device = tango.DeviceProxy(self.timer_name)
-            self.adc_device = tango.DeviceProxy(self.adc_name)
-        except:
-            self.timer_device = None
-            self.adc_device = None
-            msg = '%s Timer or ADC can not be found - exit' % self.device_name
-            self.logger.debug('', exc_info=True)
-            self.logger.error(msg)
-            self.error_stream(msg)
-            os._exit(5)
-        self.set_state(DevState.INIT)
-        try:
-            Device.init_device(self)
-            if self not in PicoPyServer.devices:
-                PicoPyServer.devices.append(self)
-            msg = 'Vasya has been born <%s>' % self.device_name
-            self.logger.info(msg)
-            self.info_stream(msg)
+            self.device_type_str = 'PicoLog1216 tango device server'
+            self.last_shot_time = -1.0
+            self.last_shot = -2
+            self.device_name = self.get_name()
+            self.device_proxy = tango.DeviceProxy(self.device_name)
+            # read config from device properties
+            level = self.get_device_property('log_level', 10)
+            self.logger.setLevel(level)
+            # read channels '1 2 4 12'
+            self.channels = []
+            cv = self.get_device_property('channels', '').split(' ')
+            for v in cv:
+                try:
+                    self.channels.append(int(v))
+                except:
+                    pass
+            self.samples = self.get_device_property('samples', 0)
+            self.deltat = self.get_device_property('deltat', 0.001)
+            self.set_state(DevState.INIT)
+            self.handle = ctypes.c_int16()
+            self.status = {}
+            # open PicoLog 1000 device
+            self.status["openUnit"] = pl.pl1000OpenUnit(ctypes.byref(self.handle))
+            assert_pico_ok(self.status["openUnit"])
+            # set sampling interval
+            channels = ctypes.c_int16(len(self.channels))
+            usForBlock = ctypes.c_uint32(self.samples * self.deltat * 1000000)
+            noOfValues = ctypes.c_uint32(self.samples)
+
+            self.status["setInterval"] = pl.pl1000SetInterval(self.handle, ctypes.byref(usForBlock), noOfValues,
+                                                         ctypes.byref(channels), len(self.channels))
+            assert_pico_ok(self.status["setInterval"])
+
+            msg = '%s PicoLog1216 started' % self.device_name
+            self.logger.debug(msg)
+            self.debug_stream(msg)
             self.set_state(DevState.RUNNING)
         except:
-            msg = '%s Vasya creation error' % self.device_name
-            self.logger.debug('', exc_info=True)
+            msg = 'PicoLog1216 Exception creating device %s' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
+            self.logger.debug('', exc_info=True)
             self.set_state(DevState.FAULT)
 
     def delete_device(self):
-        msg = '%s Vasya has been deleted' % self.device_name
+        msg = '%s PicoLog1216 has been deleted' % self.device_name
         self.logger.info(msg)
         self.info_stream(msg)
 
@@ -137,7 +147,7 @@ class PicoPyServer(Device):
         self.last_shot = self.adc_device.read_attribute('Shot_id').value
         return self.last_shot
 
-    def read_rfready(self):
+    def read_ready(self):
         if self.adc_device is not None and self.timer_device is not None:
             self.logger.error('ADC or timer is not present')
             self.error_stream('ADC or timer is not present')
