@@ -23,9 +23,10 @@ def adc2mV(bufferADC, range, maxADC):
     bufferV = [(x * vRange) / maxADC.value for x in bufferADC]
 
     return bufferV
-	
+
+
 def adc2mVpl1000(bufferADC, range, maxADC):
-	"""
+    """
 		adc2mVpl1000(
 						c_short_Array		bufferADC,
 						int 				range,
@@ -34,10 +35,11 @@ def adc2mVpl1000(bufferADC, range, maxADC):
 		
 		Takes a buffer of raw adc count values and converts it into millvolts
 	"""
-	
-	bufferV = [(x * range) / maxADC.value for x in bufferADC]
-	
-	return bufferV
+
+    bufferV = [(x * range) / maxADC.value for x in bufferADC]
+
+    return bufferV
+
 
 def mV2adc(millivolts, range, maxADC):
     """
@@ -50,12 +52,13 @@ def mV2adc(millivolts, range, maxADC):
     """
     channelInputRanges = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000]
     vRange = channelInputRanges[range]
-    adcValue = round((millivolts * maxADC.value)/vRange)
+    adcValue = round((millivolts * maxADC.value) / vRange)
 
     return adcValue
 
+
 def mV2adcpl1000(millivolts, range, maxADC):
-	"""
+    """
 		mV2adc(
 				float				millivolts,
 				int					range,
@@ -63,9 +66,9 @@ def mV2adcpl1000(millivolts, range, maxADC):
 				)
 		Takes a voltage value and converts it to adc counts
 	"""
-	adcValue = round((millivolts * maxADC.value)/range)
-	
-	return adcValue
+    adcValue = round((millivolts * maxADC.value) / range)
+
+    return adcValue
 
 
 def splitMSOData(dataLength, data):
@@ -91,7 +94,7 @@ def splitMSOData(dataLength, data):
     binaryBufferD7 = np.chararray((dataLength.value, 1))
     binaryBufferD5 = np.chararray((dataLength.value, 1))
     binaryBufferD6 = np.chararray((dataLength.value, 1))
-    
+
     # Changes the data from int type to a binary type and then separates the data for each digital channel
     for i in range(0, dataLength.value):
         MSOData = data[i]
@@ -144,7 +147,7 @@ def splitMSODataFast(dataLength, data):
     # Splits out the individual bits from the port into the binary values for each digital channel/pin.
     for i in range(dataLength.value):
         for j in range(8):
-            bufferBinaryDj[j][i] = 1 if (data[i] & (1 << (7-j))) else 0
+            bufferBinaryDj[j][i] = 1 if (data[i] & (1 << (7 - j))) else 0
 
     return bufferBinaryDj
 
