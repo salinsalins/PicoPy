@@ -79,7 +79,7 @@ class PicoPyServer(Device):
             # read config from device properties
             level = self.get_device_property('log_level', 10)
             self.logger.setLevel(level)
-            # read channels '1 2 4 12'
+            # input channels '1 2 4 12'
             self.channels = []
             cv = self.get_device_property('channels', '').split(' ')
             for v in cv:
@@ -87,15 +87,26 @@ class PicoPyServer(Device):
                     self.channels.append(int(v))
                 except:
                     pass
+            # sampling interval and number of points
             self.samples = self.get_device_property('samples', 0)
             self.deltat = self.get_device_property('deltat', 0.001)
+            # trigger
+            self.trigger_enabled = self.get_device_property('trigger_enabled', 1)
+            self.trigger_auto = self.get_device_property('trigger_auto', 0)
+            self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
+            self.trigger_channel = self.get_device_property('trigger_channel', 1)
+            self.trigger_dir = self.get_device_property('trigger_dir', 0)
+            self.trigger_threshold = self.get_device_property('trigger_threshold', 100)
+            self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 10)
+            self.trigger_delay = self.get_device_property('trigger_delay,', 0.0)
+            # create handle
             self.set_state(DevState.INIT)
             self.handle = ctypes.c_int16()
             self.status = {}
             # open PicoLog 1000 device
             self.status["openUnit"] = pl.pl1000OpenUnit(ctypes.byref(self.handle))
             assert_pico_ok(self.status["openUnit"])
-            # set sampling interval
+            # set sampling interval and number of points
             channels = ctypes.c_int16(len(self.channels))
             usForBlock = ctypes.c_uint32(self.samples * self.deltat * 1000000)
             noOfValues = ctypes.c_uint32(self.samples)
@@ -103,6 +114,16 @@ class PicoPyServer(Device):
             self.status["setInterval"] = pl.pl1000SetInterval(self.handle, ctypes.byref(usForBlock), noOfValues,
                                                          ctypes.byref(channels), len(self.channels))
             assert_pico_ok(self.status["setInterval"])
+            # set trigger
+            self.status["setTrigger"] = pl.pl1000SetTrigger(self.handle, ctypes.c_uint16(self.trigger_enabled),
+                                                            ctypes.c_uint16(self.trigger_auto),
+                                                            ctypes.c_uint16(self.trigger_auto_ms),
+                                                            ctypes.c_uint16(self.trigger_channel),
+                                                            ctypes.c_uint16(self.trigger_dir),
+                                                            ctypes.c_uint16(self.trigger_threshold),
+                                                            ctypes.c_uint16(self.trigger_hysteresis),
+                                                            ctypes.c_float(self.trigger_delay))
+            assert_pico_ok(self.status["setTrigger"])
 
             msg = '%s PicoLog1216 started' % self.device_name
             self.logger.debug(msg)
