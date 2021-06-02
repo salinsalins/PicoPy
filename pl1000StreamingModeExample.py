@@ -21,12 +21,14 @@ status["openUnit"] = pl.pl1000OpenUnit(ctypes.byref(chandle))
 assert_pico_ok(status["openUnit"])
 
 # set sampling interval
-usForBlock = ctypes.c_uint32(10000000)
-noOfValues = ctypes.c_uint32(1000000)
+usForBlock = ctypes.c_uint32(1000000)
+noOfValues = ctypes.c_uint32(1000)
 channels = ctypes.c_int16(1)
+usForBlock0 = usForBlock
 
 status["setInterval"] = pl.pl1000SetInterval(chandle, ctypes.byref(usForBlock), noOfValues, ctypes.byref(channels), 1)
 assert_pico_ok(status["setInterval"])
+print('usForBlock', usForBlock0.value, usForBlock.value, status["setInterval"])
 
 # start streaming
 mode = pl.PL1000_BLOCK_METHOD["BM_STREAM"]
@@ -37,6 +39,7 @@ sleep(usForBlock.value / 1000000)
 
 values = (ctypes.c_uint16 * noOfValues.value)()
 oveflow = ctypes.c_uint16()
+print('values', values)
 
 status["getValues"] = pl.pl1000GetValues(chandle, ctypes.byref(values), ctypes.byref(noOfValues), ctypes.byref(oveflow), None)
 assert_pico_ok(status["getValues"])
