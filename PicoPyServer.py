@@ -89,7 +89,7 @@ class PicoPyServer(Device):
                     pass
             # sampling interval and number of points
             self.samples = self.get_device_property('samples', 0)
-            self.deltat = self.get_device_property('deltat', 0.001)
+            self.delta_t = self.get_device_property('delta_t', 0.001)
             # trigger
             self.trigger_enabled = self.get_device_property('trigger_enabled', 1)
             self.trigger_auto = self.get_device_property('trigger_auto', 0)
@@ -108,12 +108,14 @@ class PicoPyServer(Device):
             assert_pico_ok(self.status["openUnit"])
             # set sampling interval and number of points
             channels = ctypes.c_int16(len(self.channels))
-            usForBlock = ctypes.c_uint32(self.samples * self.deltat * 1000000)
+            usForBlock = ctypes.c_uint32((self.samples - 1) * self.delta_t * 1000000)
             noOfValues = ctypes.c_uint32(self.samples)
 
             self.status["setInterval"] = pl.pl1000SetInterval(self.handle, ctypes.byref(usForBlock), noOfValues,
                                                          ctypes.byref(channels), len(self.channels))
             assert_pico_ok(self.status["setInterval"])
+            self.real_delta_t = (usForBlock.value / (self.samples -1)) * 1000000
+            self.logger.debug('Delta T %s %s', self.delta_t, self.real_delta_t)
             # set trigger
             self.status["setTrigger"] = pl.pl1000SetTrigger(self.handle, ctypes.c_uint16(self.trigger_enabled),
                                                             ctypes.c_uint16(self.trigger_auto),
