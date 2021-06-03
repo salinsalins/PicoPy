@@ -10,39 +10,83 @@ import numpy as np
 from picosdk.pl1000 import pl1000 as pl
 import matplotlib.pyplot as plt
 from picosdk.functions import adc2mVpl1000, assert_pico_ok
-from time import sleep
+from time import sleep, time
 
 # Create chandle and status ready for use
 chandle = ctypes.c_int16()
 status = {}
 
 # open PicoLog 1000 device
-status["openUnit"] = pl.pl1000OpenUnit(ctypes.byref(chandle))
-assert_pico_ok(status["openUnit"])
+txt = "openUnit"
+print('---', txt)
+t0 = time()
+status[txt] = pl.pl1000OpenUnit(ctypes.byref(chandle))
+print('elapsed time', time() - t0, 's')
+print(txt, 'status', status[txt])
+assert_pico_ok(status[txt])
 
+dt_us = 1000000
+n = 100
+cnls = (1, 2)
+nc = len(cnls)
 # set sampling interval
-usForBlock = ctypes.c_uint32(1000000)
-noOfValues = ctypes.c_uint32(1000)
-channels = ctypes.c_int16(1)
-usForBlock0 = usForBlock
+usForBlock = ctypes.c_uint32(dt_us)
+noOfValues = ctypes.c_uint32(n)
+channels = (ctypes.c_int16 * nc)()
+for i in range(len(cnls)):
+    channels[i] = cnls[i]
 
-status["setInterval"] = pl.pl1000SetInterval(chandle, ctypes.byref(usForBlock), noOfValues, ctypes.byref(channels), 1)
-assert_pico_ok(status["setInterval"])
-print('usForBlock', usForBlock0.value, usForBlock.value, status["setInterval"])
+txt = "setInterval"
+print('---', txt)
+t0 = time()
+status[txt] = pl.pl1000SetInterval(chandle, ctypes.byref(usForBlock), noOfValues, ctypes.byref(channels), nc)
+print('elapsed time', time() - t0, 's')
+print(txt, 'status', status[txt])
+assert_pico_ok(status[txt])
+print('noOfValues', noOfValues.value, n)
+print('usForBlock', usForBlock.value, dt_us)
+
+ready = ctypes.c_int16(0)
+#ready.value = False
 
 # start streaming
-mode = pl.PL1000_BLOCK_METHOD["BM_STREAM"]
-status["run"] = pl.pl1000Run(chandle, 1000000, mode)
-assert_pico_ok(status["run"])
+#mode = pl.PL1000_BLOCK_METHOD["BM_STREAM"]
+mode = pl.PL1000_BLOCK_METHOD["BM_SINGLE"]
+txt = "run"
+print('---', txt)
+t0 = time()
+status[txt] = pl.pl1000Run(chandle, noOfValues, mode)
+print(txt, 'status', status[txt])
+assert_pico_ok(status[txt])
+print('elapsed time', time() - t0, 's')
+print('noOfValues', noOfValues.value)
+print('usForBlock', usForBlock.value)
 
-sleep(usForBlock.value / 1000000)
+print('')
+print('--- wait ---')
 
-values = (ctypes.c_uint16 * noOfValues.value)()
+#sleep(usForBlock.value / 1000000 + 0.5)
+
+while not ready.value:
+    #print('*')
+    assert_pico_ok(pl.pl1000Ready(chandle, ctypes.byref(ready)))
+print('elapsed time', time() - t0, 's')
+print('noOfValues', noOfValues.value)
+print('usForBlock', usForBlock.value)
+
+values = (ctypes.c_uint16 * (noOfValues.value * nc))()
 oveflow = ctypes.c_uint16()
-print('values', values)
+print('len(values)', len(values), noOfValues.value)
 
-status["getValues"] = pl.pl1000GetValues(chandle, ctypes.byref(values), ctypes.byref(noOfValues), ctypes.byref(oveflow), None)
-assert_pico_ok(status["getValues"])
+txt = "getValues"
+print('---', txt)
+t0 = time()
+status[txt] = pl.pl1000GetValues(chandle, ctypes.byref(values), ctypes.byref(noOfValues), ctypes.byref(oveflow), None)
+print('status', txt, status[txt])
+print('elapsed time', time() - t0, 's')
+assert_pico_ok(status[txt])
+print('noOfValues', noOfValues.value)
+print('usForBlock', usForBlock.value)
 
 # convert ADC counts data to mV
 maxADC = ctypes.c_uint16()
@@ -53,15 +97,10 @@ mVValues =  adc2mVpl1000(values, inputRange, maxADC)
 
 # create time data
 interval = (0.01 * usForBlock.value)/(noOfValues.value * 1)
+print('interval[ms]', interval)
 
-timeMs = np.linspace(0, (len(mVValues)) * interval, len(mVValues))
-
-# plot data
-
-plt.plot(timeMs, mVValues[:])
-plt.xlabel('Time (ms)')
-plt.ylabel('Voltage (mV)')
-plt.show()
+timeMs = np.linspace(0, (len(mVValues) - 1) * interval, len(mVValues))
+print('len(timeMs)', len(timeMs))
 
 # close PicoLog 1000 device
 status["closeUnit"] = pl.pl1000CloseUnit(chandle)
@@ -69,3 +108,9 @@ assert_pico_ok(status["closeUnit"])
 
 # display status returns
 print(status)
+
+# plot data
+plt.plot(timeMs, mVValues[:])
+plt.xlabel('Time (ms)')
+plt.ylabel('Voltage (mV)')
+plt.show()
