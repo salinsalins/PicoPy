@@ -1,15 +1,25 @@
 import time
 import ctypes
+import logging
+
 import numpy as np
 
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
 from picosdk.functions import assert_pico_ok
 
-import matplotlib.pyplot as plt
-
 
 class PicoLog1000:
+    # config_logger
+    logger = logging.getLogger(__qualname__)
+    logger.propagate = False
+    # logger.setLevel(logging.DEBUG)
+    logger_f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+    logger_log_formatter = logging.Formatter(logger_f_str, datefmt='%H:%M:%S')
+    logger_console_handler = logging.StreamHandler()
+    logger_console_handler.setFormatter(logger_log_formatter)
+    logger.addHandler(logger_console_handler)
+
     def __init__(self):
         self.handle = None
         self.opened = False
@@ -30,6 +40,8 @@ class PicoLog1000:
         self.trigger = None
         #
         self.t0 = time.time()
+        #
+        self.logger.setLevel(logging.DEBUG)
 
     # def __del__(self):
     #     pass
@@ -45,6 +57,7 @@ class PicoLog1000:
         self.max_adc = max_count.value
         self.scale = self.range / self.max_adc
         self.opened = True
+        self.logger.debug('Device opened')
 
     def assert_open(self, value=True):
         self.t0 = time.time()
@@ -62,12 +75,22 @@ class PicoLog1000:
     def get_info(self, info=pl1000.PICO_INFO["PICO_HARDWARE_VERSION"]):
         self.assert_open()
         length = ctypes.c_int16(10)
-        self.last_status = pl1000.pl1000GetUnitInfo(self.handle, None, length,
-                                                    ctypes.byref(length), info)
-        self.info = (ctypes.c_int8 * length.value)()
-        self.last_status = pl1000.pl1000GetUnitInfo(self.handle, self.info, length.value,
-                                                    ctypes.byref(length), info)
-        assert_pico_ok(self.last_status)
+        info_str = {}
+        for i in pl1000.PICO_INFO:
+            info_str[i] = ''
+            v = pl1000.PICO_INFO[i]
+            try:
+                self.last_status = pl1000.pl1000GetUnitInfo(self.handle, None, length,
+                                                            ctypes.byref(length), v)
+                out_info = (ctypes.c_int8 * length.value)()
+                self.last_status = pl1000.pl1000GetUnitInfo(self.handle, out_info, length.value,
+                                                            ctypes.byref(length), v)
+                assert_pico_ok(self.last_status)
+                for j in range(len(out_info)-1):
+                    info_str[i] += chr(out_info[j])
+            except:
+                pass
+        self.info = info_str
         return self.info
 
     def set_do(self, do_number, do_value):
@@ -80,14 +103,14 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000SetPulseWidth(self.handle, ctypes.c_int16(period), ctypes.c_int8(cycle))
         assert_pico_ok(self.last_status)
 
-    def set_interval(self, channels, channel_n_points, channel_record_t_us):
+    def set_timing(self, channels, channel_points, channel_record_us):
         self.assert_open()
         nc = len(channels)
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
             cnls[i] = channels[i]
-        t_us = ctypes.c_uint32(channel_record_t_us)
-        n = ctypes.c_uint32(channel_n_points)
+        t_us = ctypes.c_uint32(channel_record_us)
+        n = ctypes.c_uint32(channel_points)
         self.last_status = pl1000.pl1000SetInterval(self.handle, ctypes.byref(t_us),
                                                     n, ctypes.byref(cnls), nc)
         assert_pico_ok(self.last_status)
@@ -95,14 +118,17 @@ class PicoLog1000:
         self.points = n.value
         self.delta_t = t_us.value
         self.sampling = (0.001 * self.delta_t) / self.points
+        self.logger.debug('%s channels %s; sampling %s ms; %s points; duration %s us',
+                          len(self.channels), self.channels, self.sampling, self.points, self.delta_t)
         # create array for data
         self.data = np.empty((nc, self.points), dtype=np.uint16, order='F')
         t = np.linspace(0, (self.points - 1) * self.sampling, self.points)
-        self.times = np.empty_like(self.data)
+        self.times = np.empty(self.data.shape)
         for i in range(nc):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
-        if self.delta_t != channel_record_t_us or self.points != channel_n_points:
-            print('Sampling interval has been corrected to', self.sampling, 'ms')
+        if self.delta_t != channel_record_us or self.points != channel_points:
+            self.logger.warning('Time interval has been corrected from %s to %s us',
+                                channel_record_us, self.delta_t)
             return False
         return True
 
@@ -145,7 +171,7 @@ class PicoLog1000:
         if wait:
             self.ready(True)
         if not self.ready():
-            print('Read on not ready device')
+            self.logger.warning('Read on not ready device')
         overflow = ctypes.c_uint16()
         trigger = ctypes.c_uint32()
         n = ctypes.c_uint32(self.points)
@@ -155,10 +181,7 @@ class PicoLog1000:
         self.overflow = overflow.value
         self.trigger = trigger.value
         if self.points != n.value:
-            print('Data partial reading', n.value, 'of', self.points)
-        # convert ADC counts to V
-        y = self.data * self.scale
-        return self.times, y
+            self.logger.warning('Data partial reading %s of %', n.value, self.points)
 
     def close(self):
         self.last_status = pl1000.pl1000CloseUnit(self.handle)
@@ -180,20 +203,28 @@ class PicoLog1000:
         assert_pico_ok(self.last_status)
 
     def ping(self):
+        t0 = time.time()
         self.last_status = pl1000.pl1000PingUnit(self.handle)
-        return self.last_status
+        if self.last_status == pl1000.PICO_STATUS['PICO_OK']:
+            return time.time() - t0
+        else:
+            return -1.0
+
 
 if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
-    pl.set_interval([1, 2], 1000, 1000000)
+    pl.set_timing([1, 2], 100000, 2000000)
     print(pl.ping())
     pl.run()
     pl.wait_result()
     pl.read()
+    pl.close()
+
+    import matplotlib.pyplot as plt
     for i in range(len(pl.channels)):
-        plt.plot(pl.times[i, :], pl.data[i, :])
+        plt.plot(pl.times[i, :], pl.data[i, :] * pl.scale * 1000)
     plt.xlabel('Time (ms)')
-    plt.ylabel('Voltage (V)')
+    plt.ylabel('Voltage (mV)')
     plt.legend([str(i) for i in pl.channels])
     plt.show()
