@@ -20,11 +20,10 @@ from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command, pipe, device_property
 # from Utils import *
 import ctypes
-from picosdk.pl1000 import pl1000 as pl
-from picosdk.functions import adc2mVpl1000, assert_pico_ok
+
+from PicoLog1000 import *
 
 NaN = float('nan')
-
 
 def config_logger(name: str = __name__, level: int = logging.DEBUG):
     logger = logging.getLogger(name)
@@ -40,15 +39,13 @@ def config_logger(name: str = __name__, level: int = logging.DEBUG):
 
 
 class PicoPyServer(Device):
-    devices = []
-    logger = config_logger(level=logging.DEBUG)
-    beeped = True
+    logger = config_logger(name=__qualname__, level=logging.DEBUG)
 
-    devicetype = attribute(label="type", dtype=str,
+    picolog_type = attribute(label="type", dtype=str,
                            display_level=DispLevel.OPERATOR,
                            access=AttrWriteType.READ,
                            unit="", format="%s",
-                           doc="PicoLog1216 tango device server")
+                           doc="PicoLog1000 series device type")
 
     lastshottime = attribute(label="Last_shot_time", dtype=float,
                              display_level=DispLevel.OPERATOR,
@@ -71,25 +68,24 @@ class PicoPyServer(Device):
     def init_device(self):
         # print(time_ms(), 'init_device entry', self)
         try:
-            self.device_type_str = 'PicoLog1216 tango device server'
-            self.last_shot_time = -1.0
-            self.last_shot = -2
+            self.device = None
+            #
             self.device_name = self.get_name()
             self.device_proxy = tango.DeviceProxy(self.device_name)
             # read config from device properties
             level = self.get_device_property('log_level', 10)
             self.logger.setLevel(level)
-            # input channels '1 2 4 12'
-            self.channels = []
+            # input channels [1, 2, 4, 12]
+            channels = []
             cv = self.get_device_property('channels', '').split(' ')
             for v in cv:
                 try:
-                    self.channels.append(int(v))
+                    channels.append(int(v))
                 except:
                     pass
             # sampling interval and number of points
-            self.samples = self.get_device_property('samples', 0)
-            self.delta_t = self.get_device_property('delta_t', 0.001)
+            samples = self.get_device_property('samples', 0)
+            delta_t = self.get_device_property('delta_t', 0.001)
             # trigger
             self.trigger_enabled = self.get_device_property('trigger_enabled', 1)
             self.trigger_auto = self.get_device_property('trigger_auto', 0)
@@ -101,44 +97,26 @@ class PicoPyServer(Device):
             self.trigger_delay = self.get_device_property('trigger_delay,', 0.0)
             # create handle
             self.set_state(DevState.INIT)
-            self.handle = ctypes.c_int16()
-            self.status = {}
+            self.device = PicoLog1000()
             # open PicoLog 1000 device
-            self.status["openUnit"] = pl.pl1000OpenUnit(ctypes.byref(self.handle))
-            assert_pico_ok(self.status["openUnit"])
+            self.device.open()
             # set sampling interval and number of points
-            channels = ctypes.c_int16(len(self.channels))
-            usForBlock = ctypes.c_uint32(self.samples * self.delta_t * 1000000)
-            noOfValues = ctypes.c_uint32(self.samples)
-
-            self.status["setInterval"] = pl.pl1000SetInterval(self.handle, ctypes.byref(usForBlock), noOfValues,
-                                                         ctypes.byref(channels), len(self.channels))
-            assert_pico_ok(self.status["setInterval"])
-            self.real_delta_t = (usForBlock.value / self.samples ) * 1000000
-            self.logger.debug('Delta T %s %s', self.delta_t, self.real_delta_t)
+            self.device.set_timing(channels, samples, delta_t)
             # set trigger
-            self.status["setTrigger"] = pl.pl1000SetTrigger(self.handle, ctypes.c_uint16(self.trigger_enabled),
-                                                            ctypes.c_uint16(self.trigger_auto),
-                                                            ctypes.c_uint16(self.trigger_auto_ms),
-                                                            ctypes.c_uint16(self.trigger_channel),
-                                                            ctypes.c_uint16(self.trigger_dir),
-                                                            ctypes.c_uint16(self.trigger_threshold),
-                                                            ctypes.c_uint16(self.trigger_hysteresis),
-                                                            ctypes.c_float(self.trigger_delay))
-            assert_pico_ok(self.status["setTrigger"])
-
+            self.device.set_trigger()
             msg = '%s PicoLog1216 started' % self.device_name
             self.logger.debug(msg)
             self.debug_stream(msg)
             self.set_state(DevState.RUNNING)
         except:
-            msg = 'PicoLog1216 Exception creating device %s' % self.device_name
+            msg = 'Exception creating PicoLog1216 device %s' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
             self.set_state(DevState.FAULT)
 
     def delete_device(self):
+        self.device.close()
         msg = '%s PicoLog1216 has been deleted' % self.device_name
         self.logger.info(msg)
         self.info_stream(msg)
