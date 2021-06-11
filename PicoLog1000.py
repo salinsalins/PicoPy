@@ -1,11 +1,12 @@
+import time
 import ctypes
 import numpy as np
 
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
+from picosdk.functions import assert_pico_ok
+
 import matplotlib.pyplot as plt
-from picosdk.functions import adc2mVpl1000, assert_pico_ok
-import time
 
 
 class PicoLog1000:
