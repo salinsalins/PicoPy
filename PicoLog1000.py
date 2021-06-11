@@ -38,6 +38,7 @@ class PicoLog1000:
         self.timeout = None
         self.overflow = None
         self.trigger = None
+        self.info = {}
         #
         self.t0 = time.time()
         #
@@ -72,12 +73,17 @@ class PicoLog1000:
         # assert_pico_ok(stat)
         # print('progress', handle, progress.value, complete.value)
 
-    def get_info(self, info=pl1000.PICO_INFO["PICO_HARDWARE_VERSION"]):
+    def get_info(self, request=None):
         self.assert_open()
+        if isinstance(request, str):
+            sources = {request: pl1000.PICO_INFO[request]}
+        elif request is None:
+            sources = pl1000.PICO_INFO
+        else:
+            sources = {a: pl1000.PICO_INFO[a] for a in request}
         length = ctypes.c_int16(10)
-        info_str = {}
-        for i in pl1000.PICO_INFO:
-            info_str[i] = ''
+        for i in sources:
+            self.info[i] = ''
             v = pl1000.PICO_INFO[i]
             try:
                 self.last_status = pl1000.pl1000GetUnitInfo(self.handle, None, length,
@@ -87,11 +93,10 @@ class PicoLog1000:
                                                             ctypes.byref(length), v)
                 assert_pico_ok(self.last_status)
                 for j in range(len(out_info)-1):
-                    info_str[i] += chr(out_info[j])
+                    self.info[i] += chr(out_info[j])
             except:
                 pass
-        self.info = info_str
-        return self.info
+        return {a: self.info[a] for a in sources}
 
     def set_do(self, do_number, do_value):
         self.assert_open()
@@ -195,6 +200,8 @@ class PicoLog1000:
     def set_trigger(self, enabled=False, channel=pl1000.PL1000Inputs["PL1000_CHANNEL_1"], edge=0,
                     threshold=2048, hysteresis=100, delay_percent=10.0, auto_trigger=False, auto_ms=1000):
         self.assert_open()
+        if isinstance(channel, str):
+            channel = pl1000.PL1000Inputs[channel]
         self.last_status = pl1000.pl1000SetTrigger(self.handle, ctypes.c_uint16(enabled),
                                                    ctypes.c_uint16(auto_trigger), ctypes.c_uint16(auto_ms),
                                                    ctypes.c_uint16(channel), ctypes.c_uint16(edge),
