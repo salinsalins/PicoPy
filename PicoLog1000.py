@@ -137,9 +137,11 @@ class PicoLog1000:
             return False
         return True
 
-    def run(self, n_values=None, mode=pl1000.PL1000_BLOCK_METHOD["BM_SINGLE"], wait=False):
-        # start streaming
+    def run(self, n_values=None, mode="BM_SINGLE", wait=False):
+        # start data recording
         self.assert_open()
+        if isinstance(mode, str):
+            mode = pl1000.PL1000_BLOCK_METHOD[mode]
         if n_values is None:
             n = ctypes.c_uint32(self.points)
         elif not isinstance(n_values, ctypes.c_uint32):
@@ -197,8 +199,9 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000Stop(self.handle)
         assert_pico_ok(self.last_status)
 
-    def set_trigger(self, enabled=False, channel=pl1000.PL1000Inputs["PL1000_CHANNEL_1"], edge=0,
-                    threshold=2048, hysteresis=100, delay_percent=10.0, auto_trigger=False, auto_ms=1000):
+    def set_trigger(self, enabled=False, channel="PL1000_CHANNEL_1", edge=0,
+                    threshold=2048, hysteresis=100, delay_percent=10.0,
+                    auto_trigger=False, auto_ms=1000):
         self.assert_open()
         if isinstance(channel, str):
             channel = pl1000.PL1000Inputs[channel]
