@@ -87,15 +87,15 @@ class PicoPyServer(Device):
             samples = self.get_device_property('samples', 0)
             delta_t = self.get_device_property('delta_t', 0.001)
             # trigger
-            self.trigger_enabled = self.get_device_property('trigger_enabled', 1)
+            self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
             self.trigger_auto = self.get_device_property('trigger_auto', 0)
             self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
             self.trigger_channel = self.get_device_property('trigger_channel', 1)
             self.trigger_dir = self.get_device_property('trigger_dir', 0)
-            self.trigger_threshold = self.get_device_property('trigger_threshold', 100)
-            self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 10)
-            self.trigger_delay = self.get_device_property('trigger_delay,', 0.0)
-            # create handle
+            self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
+            self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
+            self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
+            # create device
             self.set_state(DevState.INIT)
             self.device = PicoLog1000()
             # open PicoLog 1000 device
@@ -103,13 +103,15 @@ class PicoPyServer(Device):
             # set sampling interval and number of points
             self.device.set_timing(channels, samples, delta_t)
             # set trigger
-            self.device.set_trigger()
-            msg = '%s PicoLog1216 started' % self.device_name
+            self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
+                                    self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
+                                    self.trigger_threshold, self.trigger_hysteresis,self.trigger_delay)
+            msg = '%s PicoLog1216 has been initialized' % self.device_name
             self.logger.debug(msg)
             self.debug_stream(msg)
             self.set_state(DevState.RUNNING)
         except:
-            msg = 'Exception creating PicoLog1216 device %s' % self.device_name
+            msg = 'Exception initialization PicoLog1216 device %s' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
@@ -149,28 +151,19 @@ class PicoPyServer(Device):
         return self.last_shot
 
     def read_ready(self):
-        if self.adc_device is not None and self.timer_device is not None:
-            self.logger.error('ADC or timer is not present')
-            self.error_stream('ADC or timer is not present')
-            return False
-        av = read_attribute_value(self.adc_device, 'chan16')
-        av_coeff = read_coeff(self.adc_device, 'chan16')
-        cc = self.adc_device.read_attribute('chan22')
-        cc_coeff = read_coeff(self.adc_device, 'chan22')
-        pr = self.timer_device.read_attribute('di60')
-        if av.quality != tango._tango.AttrQuality.ATTR_VALID or \
-                av.value * av_coeff < 8.0 or \
-                cc.quality != tango._tango.AttrQuality.ATTR_VALID or \
-                cc.value * cc_coeff < 0.1 or \
-                not pr.value:
-            return False
-        else:
-            return True
+        return self.device.ready()
 
     @command(dtype_in=int)
     def setLogLevel(self, level):
         self.logger.setLevel(level)
         msg = '%s Log level set to %d' % (self.device_name, level)
+        self.logger.info(msg)
+        self.info_stream(msg)
+
+    @command(dtype_in=int)
+    def startRecording(self, wait):
+        self.device.run()
+        msg = '%s Recording started' % self.device_name
         self.logger.info(msg)
         self.info_stream(msg)
 
@@ -235,6 +228,5 @@ def looping():
 
 
 if __name__ == "__main__":
-    # VasyaPy_Server.run_server(post_init_callback=post_init_callback, event_loop=looping)
+    # PicoPyServer.run_server(post_init_callback=post_init_callback, event_loop=looping)
     PicoPyServer.run_server(event_loop=looping)
-    # VasyaPy_Server.run_server()
