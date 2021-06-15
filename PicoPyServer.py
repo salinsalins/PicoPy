@@ -45,10 +45,16 @@ class PicoPyServer(Device):
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
 
     device_type = attribute(label="type", dtype=str,
-                             display_level=DispLevel.OPERATOR,
-                             access=AttrWriteType.READ,
-                             unit="", format="%s",
-                             doc="Type of PicoLog1000 series device")
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="", format="%s",
+                            doc="Type of PicoLog1000 series device")
+
+    info = attribute(label="info", dtype=str,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit="", format="%s",
+                     doc="Info of PicoLog1000 series device")
 
     lastshottime = attribute(label="Last_shot_time", dtype=float,
                              display_level=DispLevel.OPERATOR,
@@ -132,13 +138,24 @@ class PicoPyServer(Device):
             self.set_state(DevState.FAULT)
 
     def delete_device(self):
-        self.device.close()
-        msg = '%s PicoLog1216 has been deleted' % self.device_name
+        try:
+            self.device.stop()
+        except:
+            pass
+        try:
+            self.device.close()
+        except:
+            pass
+        self.set_state(DevState.OFF)
+        msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
         self.info_stream(msg)
 
     def read_device_type(self):
         return self.device_type_str
+
+    def read_info(self):
+        return str(self.device.info)
 
     def read_lastshottime(self):
         if self.adc_device is None:
