@@ -42,9 +42,9 @@ class PicoLog1000:
         self.overflow = None
         self.trigger = None
         self.info = {}
+        #
         self.run_time = 0.0
         self.read_time = 0.0
-        #
         self.t0 = time.time()
         #
         self.logger.setLevel(logging.DEBUG)
