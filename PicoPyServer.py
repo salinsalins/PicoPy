@@ -62,12 +62,12 @@ class PicoPyServer(Device):
                      unit=" s", format="%f",
                      doc="Ping time")
 
-    # shotnumber = attribute(label="Shot_Number", dtype=int,
-    #                        display_level=DispLevel.OPERATOR,
-    #                        access=AttrWriteType.READ,
-    #                        unit=" .", format="%d",
-    #                        doc="Number of the last shot")
-    #
+    raw_data = attribute(label="Shot_Number", dtype=[numpy.uint16],
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ,
+                         unit="", format="%d",
+                         doc="Raw data in ADC quanta")
+
     # ready = attribute(label="Ready", dtype=bool,
     #                   display_level=DispLevel.OPERATOR,
     #                   access=AttrWriteType.READ,
@@ -83,6 +83,7 @@ class PicoPyServer(Device):
         self.device_proxy = None
         self.channels = []
         self.record_initiated = False
+        self.data_ready = False
         self.init_result = None
         try:
             self.set_state(DevState.INIT)
@@ -164,13 +165,15 @@ class PicoPyServer(Device):
         except:
             return -1.0
 
-    def read_shotnumber(self):
-        if self.adc_device is None:
-            PicoPyServer.logger.error('ADC is not present')
-            self.error_stream('ADC is not present')
-            return -1
-        self.last_shot = self.adc_device.read_attribute('Shot_id').value
-        return self.last_shot
+    def read_raw_data(self):
+        if self.data_ready:
+            return self.device.data
+        else:
+            msg = '%s data is not ready' % self.device_name
+            self.logger.error(msg)
+            self.error_stream(msg)
+            #self.logger.debug('', exc_info=True)
+            return []
 
     def read_ready(self):
         return self.device.ready()
@@ -185,6 +188,7 @@ class PicoPyServer(Device):
     @command(dtype_in=int)
     def startRecording(self, wait):
         self.record_initiated = True
+        self.data_ready = False
         self.device.run()
         msg = '%s Recording started' % self.device_name
         self.logger.info(msg)
@@ -231,12 +235,22 @@ def post_init_callback():
 
 
 def looping():
-    pass
-    time.sleep(0.1)
+    time.sleep(0.01)
     for dev in PicoPyServer.devices:
         if dev.record_initiated:
-            if dev.ready():
-                dev.read()
+            try:
+                if dev.ready():
+                    msg = '%s recording finished, reading data' % dev.device_name
+                    dev.logger.info(msg)
+                    dev.info_stream(msg)
+                    dev.read()
+                    dev.record_initiated = False
+                    dev.data_ready = True
+            except:
+                msg = '%s reading data error' % dev.device_name
+                dev.logger.info(msg)
+                dev.info_stream(msg)
+                dev.logger.debug('', exc_info=True)
     # PicoPyServer.logger.debug('loop exit')
 
 
