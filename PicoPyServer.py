@@ -25,6 +25,7 @@ from PicoLog1000 import *
 
 NaN = float('nan')
 
+
 def config_logger(name: str = __name__, level: int = logging.DEBUG):
     logger = logging.getLogger(name)
     if not logger.hasHandlers():
@@ -39,13 +40,15 @@ def config_logger(name: str = __name__, level: int = logging.DEBUG):
 
 
 class PicoPyServer(Device):
+    devices = []
+
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
 
-    picolog_type = attribute(label="type", dtype=str,
-                           display_level=DispLevel.OPERATOR,
-                           access=AttrWriteType.READ,
-                           unit="", format="%s",
-                           doc="PicoLog1000 series device type")
+    device_type = attribute(label="type", dtype=str,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ,
+                             unit="", format="%s",
+                             doc="Type of PicoLog1000 series device")
 
     lastshottime = attribute(label="Last_shot_time", dtype=float,
                              display_level=DispLevel.OPERATOR,
@@ -63,55 +66,65 @@ class PicoPyServer(Device):
                       display_level=DispLevel.OPERATOR,
                       access=AttrWriteType.READ,
                       unit="", format="",
-                      doc="Readiness of PicoLog1216")
+                      doc="Readiness of PicoLog")
 
     def init_device(self):
-        # print(time_ms(), 'init_device entry', self)
+        self.logger.debug('Init_device entry')
+        if self not in PicoPyServer.devices:
+            PicoPyServer.devices.append(self)
+        self.init_result = None
+        self.device_type = "PicoLog1000 series device"
+        self.device = None
         try:
-            self.device = None
+            self.set_state(DevState.INIT)
             #
             self.device_name = self.get_name()
             self.device_proxy = tango.DeviceProxy(self.device_name)
             # read config from device properties
             level = self.get_device_property('log_level', 10)
             self.logger.setLevel(level)
-            # input channels [1, 2, 4, 12]
-            channels = []
+            # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
+            self.channels = []
             cv = self.get_device_property('channels', '').split(' ')
             for v in cv:
                 try:
-                    channels.append(int(v))
+                    self.channels.append(int(v))
                 except:
                     pass
             # sampling interval and number of points
-            samples = self.get_device_property('samples', 0)
-            delta_t = self.get_device_property('delta_t', 0.001)
+            self.points = self.get_device_property('points_per_channel', 0)
+            self.record_us = self.get_device_property('channel_record_time_us', 1000000)
             # trigger
             self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
             self.trigger_auto = self.get_device_property('trigger_auto', 0)
             self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
             self.trigger_channel = self.get_device_property('trigger_channel', 1)
-            self.trigger_dir = self.get_device_property('trigger_dir', 0)
+            self.trigger_dir = self.get_device_property('trigger_direction', 0)
             self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
             self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
             self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
             # create device
-            self.set_state(DevState.INIT)
             self.device = PicoLog1000()
+            self.device.logger = self.logger
+            self.set_state(DevState.ON)
             # open PicoLog 1000 device
             self.device.open()
+            self.set_state(DevState.OPEN)
+            self.device.get_info()
+            self.device_type = self.device.info['PICO_VARIANT_INFO']
             # set sampling interval and number of points
-            self.device.set_timing(channels, samples, delta_t)
+            self.device.set_timing(self.channels, self.points, self.record_us)
             # set trigger
             self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
                                     self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
-                                    self.trigger_threshold, self.trigger_hysteresis,self.trigger_delay)
+                                    self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay)
             msg = '%s PicoLog1216 has been initialized' % self.device_name
-            self.logger.debug(msg)
-            self.debug_stream(msg)
-            self.set_state(DevState.RUNNING)
-        except:
-            msg = 'Exception initialization PicoLog1216 device %s' % self.device_name
+            self.logger.info(msg)
+            self.info_stream(msg)
+            self.set_state(DevState.STANDBY)
+        except Exception as ex:
+            self.init_result = ex
+            msg = 'Exception initialization PicoLog device %s' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
@@ -123,7 +136,7 @@ class PicoPyServer(Device):
         self.logger.info(msg)
         self.info_stream(msg)
 
-    def read_devicetype(self):
+    def read_device_type(self):
         return self.device_type_str
 
     def read_lastshottime(self):

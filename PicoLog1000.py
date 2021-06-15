@@ -30,7 +30,7 @@ class PicoLog1000:
         self.scale = self.range / self.max_adc  # self.range/self.max_adc Volts per ADC quantum
         self.channels = []
         self.points = 0
-        self.delta_t = 0
+        self.record_us = 0
         self.sampling = 0
         self.data = None
         self.times = None
@@ -121,19 +121,19 @@ class PicoLog1000:
         assert_pico_ok(self.last_status)
         self.channels = channels
         self.points = n.value
-        self.delta_t = t_us.value
-        self.sampling = (0.001 * self.delta_t) / self.points
+        self.record_us = t_us.value
+        self.sampling = (0.001 * self.record_us) / self.points
         self.logger.debug('%s channels %s; sampling %s ms; %s points; duration %s us',
-                          len(self.channels), self.channels, self.sampling, self.points, self.delta_t)
+                          len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
         self.data = np.empty((nc, self.points), dtype=np.uint16, order='F')
         t = np.linspace(0, (self.points - 1) * self.sampling, self.points)
         self.times = np.empty(self.data.shape)
         for i in range(nc):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
-        if self.delta_t != channel_record_us or self.points != channel_points:
+        if self.record_us != channel_record_us or self.points != channel_points:
             self.logger.warning('Time interval has been corrected from %s to %s us',
-                                channel_record_us, self.delta_t)
+                                channel_record_us, self.record_us)
             return False
         return True
 
