@@ -62,12 +62,42 @@ class PicoPyServer(Device):
                      unit=" s", format="%f",
                      doc="Ping time")
 
-    raw_data = attribute(label="Shot_Number", dtype=[numpy.uint16],
+    scale = attribute(label="scale", dtype=float,
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ,
+                      unit="V", format="%f",
+                      doc="Volts per quantum")
+
+    sampling = attribute(label="sampling", dtype=float,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ,
+                         unit="ms", format="%f",
+                         doc="Sampling in milliseconds between points in each channel")
+
+    raw_data = attribute(label="Raw_Data", dtype=[[numpy.uint16]],
+                         max_dim_x = 16,
+                         max_dim_y = 1000000,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="", format="%d",
                          doc="Raw data in ADC quanta")
 
+    # data = attribute(label="data", dtype=[[numpy.float64]],
+    #                  max_dim_x=16,
+    #                  max_dim_y=1000000,
+    #                  display_level=DispLevel.OPERATOR,
+    #                  access=AttrWriteType.READ,
+    #                  unit="", format="%f",
+    #                  doc="Data in volts")
+    #
+    # times = attribute(label="times", dtype=[[numpy.float64]],
+    #                   max_dim_x=16,
+    #                   max_dim_y=1000000,
+    #                   display_level=DispLevel.OPERATOR,
+    #                   access=AttrWriteType.READ,
+    #                   unit="s", format="%f",
+    #                   doc="ADC acquisition time in seconds")
+    #
     # ready = attribute(label="Ready", dtype=bool,
     #                   display_level=DispLevel.OPERATOR,
     #                   access=AttrWriteType.READ,
@@ -123,6 +153,8 @@ class PicoPyServer(Device):
             self.device_type_str = self.device.info['PICO_VARIANT_INFO']
             # set sampling interval and number of points
             self.device.set_timing(self.channels, self.points, self.record_us)
+            self.raw_data.dim_x = len(self.channels)
+            self.raw_data.dim_y = self.points
             # set trigger
             self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
                                     self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
@@ -165,18 +197,60 @@ class PicoPyServer(Device):
         except:
             return -1.0
 
+    def read_scale(self):
+        try:
+            return self.device.scale
+        except:
+            return 0.0
+
+    def read_sampling(self):
+        try:
+            return self.device.sampling
+        except:
+            return 0.0
+
     def read_raw_data(self):
         if self.data_ready:
+            self.logger.error('data size %s', self.device.data.shape)
             return self.device.data
         else:
             msg = '%s data is not ready' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
-            #self.logger.debug('', exc_info=True)
+            # self.logger.debug('', exc_info=True)
+            return []
+
+    def read_data(self):
+        if self.data_ready:
+            return self.device.data * self.device.scale
+        else:
+            msg = '%s data is not ready' % self.device_name
+            self.logger.error(msg)
+            self.error_stream(msg)
+            # self.logger.debug('', exc_info=True)
+            return []
+
+    def read_times(self):
+        if self.data_ready:
+            return self.device.times
+        else:
+            msg = '%s data is not ready' % self.device_name
+            self.logger.error(msg)
+            self.error_stream(msg)
+            # self.logger.debug('', exc_info=True)
             return []
 
     def read_ready(self):
         return self.device.ready()
+
+    def set_sampling(self):
+        # read sampling interval and number of points
+        self.points = self.get_device_property('points_per_channel', 1000)
+        self.record_us = self.get_device_property('channel_record_time_us', 1000000)
+        # set sampling interval and number of points
+        self.device.set_timing(self.channels, self.points, self.record_us)
+        self.raw_data.dim_x = len(self.channels)
+        self.raw_data.dim_y = self.points
 
     @command(dtype_in=int)
     def setLogLevel(self, level):
@@ -186,7 +260,7 @@ class PicoPyServer(Device):
         self.info_stream(msg)
 
     @command(dtype_in=int)
-    def startRecording(self, wait):
+    def startRecording(self, value):
         self.record_initiated = True
         self.data_ready = False
         self.device.run()
@@ -239,14 +313,16 @@ def looping():
     for dev in PicoPyServer.devices:
         if dev.record_initiated:
             try:
-                if dev.ready():
+                if dev.device.ready():
                     msg = '%s recording finished, reading data' % dev.device_name
                     dev.logger.info(msg)
                     dev.info_stream(msg)
-                    dev.read()
+                    dev.device.read()
                     dev.record_initiated = False
                     dev.data_ready = True
             except:
+                dev.record_initiated = False
+                dev.data_ready = False
                 msg = '%s reading data error' % dev.device_name
                 dev.logger.info(msg)
                 dev.info_stream(msg)
