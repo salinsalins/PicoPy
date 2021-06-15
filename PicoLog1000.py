@@ -43,6 +43,7 @@ class PicoLog1000:
         self.trigger = None
         self.info = {}
         self.run_time = 0.0
+        self.read_time = 0.0
         #
         self.t0 = time.time()
         #
@@ -190,6 +191,7 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000GetValues(self.handle, self.data.ctypes, ctypes.byref(n),
                                                   ctypes.byref(overflow), ctypes.byref(trigger))
         assert_pico_ok(self.last_status)
+        self.read_time = time.time()
         self.overflow = overflow.value
         self.trigger = trigger.value
         if self.points != n.value:
