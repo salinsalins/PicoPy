@@ -51,7 +51,7 @@ class PicoPyServer(Device):
                             doc="Type of PicoLog1000 series device")
 
     info = attribute(label="info", dtype=str,
-                     display_level=DispLevel.OPERATOR,
+                     display_level=DispLevel.EXPERT,
                      access=AttrWriteType.READ,
                      unit="", format="%s",
                      doc="Info of PicoLog1000 series device")
@@ -78,10 +78,11 @@ class PicoPyServer(Device):
         if self not in PicoPyServer.devices:
             PicoPyServer.devices.append(self)
         self.device = None
-        self.device_type = "Unknown PicoLog1000 series device"
+        self.device_type_str = "Unknown PicoLog1000 series device"
         self.device_name = ''
         self.device_proxy = None
         self.channels = []
+        self.record_initiated = False
         self.init_result = None
         try:
             self.set_state(DevState.INIT)
@@ -118,7 +119,7 @@ class PicoPyServer(Device):
             self.device.open()
             self.set_state(DevState.OPEN)
             self.device.get_info()
-            self.device_type = self.device.info['PICO_VARIANT_INFO']
+            self.device_type_str = self.device.info['PICO_VARIANT_INFO']
             # set sampling interval and number of points
             self.device.set_timing(self.channels, self.points, self.record_us)
             # set trigger
@@ -193,6 +194,7 @@ class PicoPyServer(Device):
 
     @command(dtype_in=int)
     def startRecording(self, wait):
+        self.record_initiated = True
         self.device.run()
         msg = '%s Recording started' % self.device_name
         self.logger.info(msg)
@@ -217,7 +219,7 @@ class PicoPyServer(Device):
         return result
 
 
-def read_coeff(dev: None, attr: str):
+def read_coeff(dev: Device, attr: str):
     try:
         config = dev.get_attribute_config_ex(attr)[0]
         return float(config.display_unit)
@@ -225,7 +227,7 @@ def read_coeff(dev: None, attr: str):
         return 1.0
 
 
-def read_attribute_value(dev: None, attr_name: str):
+def read_attribute_value(dev: Device, attr_name: str):
     try:
         attribute = dev.read_attribute(attr_name)
         coeff = read_coeff(dev, attr_name)
@@ -239,23 +241,13 @@ def post_init_callback():
 
 
 def looping():
-    time.sleep(0.3)
-    # VasyaPy_Server.logger.debug('loop entry')
+    pass
+    time.sleep(0.1)
     for dev in PicoPyServer.devices:
-        if dev.adc_device is not None and dev.timer_device is not None:
-            mode = dev.timer_device.read_attribute('Start_mode').value
-            # VasyaPy_Server.logger.debug('mode %s' % mode)
-            if mode == 1:
-                period = dev.timer_device.read_attribute('Period').value
-                elapsed = dev.adc_device.read_attribute('Elapsed').value
-                remained = period - elapsed
-                if not PicoPyServer.beeped and remained < 1.0:
-                    PicoPyServer.logger.debug('1 second to shot - Beep')
-                    winsound.Beep(500, 300)
-                    PicoPyServer.beeped = True
-                if remained > 2.0:
-                    PicoPyServer.beeped = False
-    # VasyaPy_Server.logger.debug('loop exit')
+        if dev.record_initiated:
+            if dev.ready():
+                dev.read()
+    # PicoPyServer.logger.debug('loop exit')
 
 
 if __name__ == "__main__":

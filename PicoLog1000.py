@@ -42,6 +42,7 @@ class PicoLog1000:
         self.overflow = None
         self.trigger = None
         self.info = {}
+        self.run_time = 0.0
         #
         self.t0 = time.time()
         #
@@ -153,6 +154,7 @@ class PicoLog1000:
             n = n_values
         self.last_status = pl1000.pl1000Run(self.handle, n, mode)
         assert_pico_ok(self.last_status)
+        self.run_time = time.time()
         if wait:
             self.ready(True)
 
@@ -209,9 +211,9 @@ class PicoLog1000:
         if isinstance(channel, str):
             channel = pl1000.PL1000Inputs[channel]
         self.last_status = pl1000.pl1000SetTrigger(self.handle, ctypes.c_uint16(enabled),
-                                                   ctypes.c_uint16(auto_trigger), ctypes.c_uint16(auto_ms),
-                                                   ctypes.c_uint16(channel), ctypes.c_uint16(edge),
-                                                   ctypes.c_uint16(threshold), ctypes.c_uint16(hysteresis),
+                                                   ctypes.c_uint16(int(auto_trigger)), ctypes.c_uint16(int(auto_ms)),
+                                                   ctypes.c_uint16(int(channel)), ctypes.c_uint16(int(edge)),
+                                                   ctypes.c_uint16(int(threshold)), ctypes.c_uint16(int(hysteresis)),
                                                    delay_percent)
         assert_pico_ok(self.last_status)
 
