@@ -56,23 +56,23 @@ class PicoPyServer(Device):
                      unit="", format="%s",
                      doc="Info of PicoLog1000 series device")
 
-    lastshottime = attribute(label="Last_shot_time", dtype=float,
-                             display_level=DispLevel.OPERATOR,
-                             access=AttrWriteType.READ,
-                             unit=" s", format="%f",
-                             doc="Time of the last shot")
-
-    shotnumber = attribute(label="Shot_Number", dtype=int,
-                           display_level=DispLevel.OPERATOR,
-                           access=AttrWriteType.READ,
-                           unit=" .", format="%d",
-                           doc="Number of the last shot")
-
-    ready = attribute(label="Ready", dtype=bool,
-                      display_level=DispLevel.OPERATOR,
-                      access=AttrWriteType.READ,
-                      unit="", format="",
-                      doc="Readiness of PicoLog")
+    # lastshottime = attribute(label="Last_shot_time", dtype=float,
+    #                          display_level=DispLevel.OPERATOR,
+    #                          access=AttrWriteType.READ,
+    #                          unit=" s", format="%f",
+    #                          doc="Time of the last shot")
+    #
+    # shotnumber = attribute(label="Shot_Number", dtype=int,
+    #                        display_level=DispLevel.OPERATOR,
+    #                        access=AttrWriteType.READ,
+    #                        unit=" .", format="%d",
+    #                        doc="Number of the last shot")
+    #
+    # ready = attribute(label="Ready", dtype=bool,
+    #                   display_level=DispLevel.OPERATOR,
+    #                   access=AttrWriteType.READ,
+    #                   unit="", format="",
+    #                   doc="Readiness of PicoLog")
 
     def init_device(self):
         if self not in PicoPyServer.devices:
