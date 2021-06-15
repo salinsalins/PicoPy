@@ -56,12 +56,12 @@ class PicoPyServer(Device):
                      unit="", format="%s",
                      doc="Info of PicoLog1000 series device")
 
-    # lastshottime = attribute(label="Last_shot_time", dtype=float,
-    #                          display_level=DispLevel.OPERATOR,
-    #                          access=AttrWriteType.READ,
-    #                          unit=" s", format="%f",
-    #                          doc="Time of the last shot")
-    #
+    ping = attribute(label="Ping_time", dtype=float,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit=" s", format="%f",
+                     doc="Ping time")
+
     # shotnumber = attribute(label="Shot_Number", dtype=int,
     #                        display_level=DispLevel.OPERATOR,
     #                        access=AttrWriteType.READ,
@@ -158,21 +158,11 @@ class PicoPyServer(Device):
     def read_info(self):
         return str(self.device.info)
 
-    def read_lastshottime(self):
-        if self.adc_device is None:
-            PicoPyServer.logger.error('ADC is not present')
-            self.error_stream('ADC is not present')
-            return NaN
-        elapsed = self.adc_device.read_attribute('Elapsed')
-        t0 = time.time()
-        if elapsed.quality != tango._tango.AttrQuality.ATTR_VALID:
-            self.logger.warning('Non Valid attribute %s %s' % (elapsed.name, elapsed.quality))
-        t = elapsed.time.tv_sec + (1.0e-6 * elapsed.time.tv_usec)
-        # VasyaPy_Server.logger.debug('elapsed.value %s' % elapsed.value)
-        # VasyaPy_Server.logger.debug('t0 %f' % t0)
-        # VasyaPy_Server.logger.debug('elapsed read time %f' % t)
-        self.last_shot_time = t0 - elapsed.value
-        return self.last_shot_time
+    def read_ping(self):
+        try:
+            return self.device.ping()
+        except:
+            return -1.0
 
     def read_shotnumber(self):
         if self.adc_device is None:
