@@ -69,12 +69,14 @@ class PicoPyServer(Device):
                       doc="Readiness of PicoLog")
 
     def init_device(self):
-        self.logger.debug('Init_device entry')
         if self not in PicoPyServer.devices:
             PicoPyServer.devices.append(self)
-        self.init_result = None
-        self.device_type = "PicoLog1000 series device"
         self.device = None
+        self.device_type = "Unknown PicoLog1000 series device"
+        self.device_name = ''
+        self.device_proxy = None
+        self.channels = []
+        self.init_result = None
         try:
             self.set_state(DevState.INIT)
             #
@@ -84,15 +86,14 @@ class PicoPyServer(Device):
             level = self.get_device_property('log_level', 10)
             self.logger.setLevel(level)
             # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
-            self.channels = []
-            cv = self.get_device_property('channels', '').split(' ')
+            cv = self.get_device_property('channels', '1').split(' ')
             for v in cv:
                 try:
                     self.channels.append(int(v))
                 except:
                     pass
             # sampling interval and number of points
-            self.points = self.get_device_property('points_per_channel', 0)
+            self.points = self.get_device_property('points_per_channel', 1000)
             self.record_us = self.get_device_property('channel_record_time_us', 1000000)
             # trigger
             self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
@@ -118,7 +119,7 @@ class PicoPyServer(Device):
             self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
                                     self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
                                     self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay)
-            msg = '%s PicoLog1216 has been initialized' % self.device_name
+            msg = '%s %s has been initialized' % (self.device_name, self.device_type)
             self.logger.info(msg)
             self.info_stream(msg)
             self.set_state(DevState.STANDBY)
