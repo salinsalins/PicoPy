@@ -7,6 +7,7 @@ import logging
 
 import numpy as np
 
+from picosdk.constants import PICO_STATUS
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
 from picosdk.functions import assert_pico_ok
@@ -97,7 +98,7 @@ class PicoLog1000:
                 self.last_status = pl1000.pl1000GetUnitInfo(self.handle, out_info, length.value,
                                                             ctypes.byref(length), v)
                 assert_pico_ok(self.last_status)
-                for j in range(len(out_info)-1):
+                for j in range(len(out_info) - 1):
                     self.info[i] += chr(out_info[j])
             except:
                 pass
@@ -141,6 +142,14 @@ class PicoLog1000:
                                 channel_record_us, self.record_us)
             return False
         return True
+
+    def get_last_status(self, stat=None):
+        if stat is None:
+            stat = self.last_status
+        for k in PICO_STATUS:
+            if PICO_STATUS[k] == stat:
+                return k
+        return "UNKNOWN"
 
     def run(self, n_values=None, mode="BM_SINGLE", wait=False):
         # start data recording
@@ -222,7 +231,8 @@ class PicoLog1000:
     def ping(self):
         t0 = time.time()
         self.last_status = pl1000.pl1000PingUnit(self.handle)
-        if self.last_status == pl1000.PICO_STATUS['PICO_OK']:
+        if self.last_status == pl1000.PICO_STATUS['PICO_OK'] or \
+                self.last_status == pl1000.PICO_STATUS['PICO_BUSY']:
             return time.time() - t0
         else:
             return -1.0
@@ -232,13 +242,24 @@ if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
     pl.set_timing([1, 2], 100000, 2000000)
-    print(pl.ping())
+    print(pl.ping(), pl.get_last_status())
+    print(pl.ready(), pl.get_last_status())
     pl.run()
     pl.wait_result()
     pl.read()
+    print(pl.get_last_status())
+    print(pl.ready(), pl.get_last_status())
+    pl.run()
+    pl.wait_result()
+    pl.read()
+    print(pl.get_last_status())
+    print(pl.ping(), pl.get_last_status())
+    print(pl.ready(), pl.get_last_status())
+    print(pl.ping(), pl.get_last_status())
     pl.close()
 
     import matplotlib.pyplot as plt
+
     for i in range(len(pl.channels)):
         plt.plot(pl.times[i, :], pl.data[i, :] * pl.scale * 1000)
     plt.xlabel('Time (ms)')

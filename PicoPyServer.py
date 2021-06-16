@@ -74,13 +74,13 @@ class PicoPyServer(Device):
                          unit="ms", format="%f",
                          doc="Sampling in milliseconds between points in each channel")
 
-    raw_data = attribute(label="Raw_Data", dtype=[[numpy.uint16]],
-                         max_dim_x = 16,
-                         max_dim_y = 1000000,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ,
-                         unit="", format="%d",
-                         doc="Raw data in ADC quanta")
+    # raw_data = attribute(label="Raw_Data", dtype=[[numpy.uint16]],
+    #                      max_dim_x=16,
+    #                      max_dim_y=1000000,
+    #                      display_level=DispLevel.OPERATOR,
+    #                      access=AttrWriteType.READ,
+    #                      unit="", format="%d",
+    #                      doc="Raw data in ADC quanta")
 
     # data = attribute(label="data", dtype=[[numpy.float64]],
     #                  max_dim_x=16,
@@ -98,6 +98,17 @@ class PicoPyServer(Device):
     #                   unit="s", format="%f",
     #                   doc="ADC acquisition time in seconds")
     #
+
+    chany1 = attribute(label="Raw_Data_Channel_1", dtype=[numpy.uint16],
+                       min_value=0,
+                       max_value=4095,
+                       max_dim_x=1000000,
+                       max_dim_y=0,
+                       display_level=DispLevel.OPERATOR,
+                       access=AttrWriteType.READ,
+                       unit="V", format="%5.3f",
+                       doc="Raw data for channel 1 in ADC quanta")
+
     # ready = attribute(label="Ready", dtype=bool,
     #                   display_level=DispLevel.OPERATOR,
     #                   access=AttrWriteType.READ,
@@ -123,27 +134,28 @@ class PicoPyServer(Device):
             # read config from device properties
             level = self.get_device_property('log_level', 10)
             self.logger.setLevel(level)
-            # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
-            cv = self.get_device_property('channels', '1').split(' ')
-            for v in cv:
-                try:
-                    self.channels.append(int(v))
-                except:
-                    pass
-            # sampling interval and number of points
-            self.points = self.get_device_property('points_per_channel', 1000)
-            self.record_us = self.get_device_property('channel_record_time_us', 1000000)
-            # trigger
-            self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
-            self.trigger_auto = self.get_device_property('trigger_auto', 0)
-            self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
-            self.trigger_channel = self.get_device_property('trigger_channel', 1)
-            self.trigger_dir = self.get_device_property('trigger_direction', 0)
-            self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
-            self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
-            self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
+            # # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
+            # cv = self.get_device_property('channels', '1').split(' ')
+            # for v in cv:
+            #     try:
+            #         self.channels.append(int(v))
+            #     except:
+            #         pass
+            # # sampling interval and number of points
+            # self.points = self.get_device_property('points_per_channel', 1000)
+            # self.record_us = self.get_device_property('channel_record_time_us', 1000000)
+            # # trigger
+            # self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
+            # self.trigger_auto = self.get_device_property('trigger_auto', 0)
+            # self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
+            # self.trigger_channel = self.get_device_property('trigger_channel', 1)
+            # self.trigger_dir = self.get_device_property('trigger_direction', 0)
+            # self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
+            # self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
+            # self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
             # create device
             self.device = PicoLog1000()
+            # change logger to class
             self.device.logger = self.logger
             self.set_state(DevState.ON)
             # open PicoLog 1000 device
@@ -152,14 +164,13 @@ class PicoPyServer(Device):
             self.device.get_info()
             self.device_type_str = self.device.info['PICO_VARIANT_INFO']
             # set sampling interval and number of points
-            self.device.set_timing(self.channels, self.points, self.record_us)
-            self.raw_data.dim_x = len(self.channels)
-            self.raw_data.dim_y = self.points
+            self.set_sampling()
             # set trigger
-            self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
-                                    self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
-                                    self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay)
-            msg = '%s %s has been initialized' % (self.device_name, self.device_type)
+            self.set_trigger()
+            # self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
+            #                         self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
+            #                         self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay)
+            msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
             self.logger.info(msg)
             self.info_stream(msg)
             self.set_state(DevState.STANDBY)
@@ -192,9 +203,13 @@ class PicoPyServer(Device):
         return str(self.device.info)
 
     def read_ping(self):
+        # self.logger.debug('enter')
         try:
-            return self.device.ping()
+            v = self.device.ping()
+            # self.logger.debug(self.device.get_last_status())
+            return v
         except:
+            self.logger.debug('', exc_info=True)
             return -1.0
 
     def read_scale(self):
@@ -209,9 +224,21 @@ class PicoPyServer(Device):
         except:
             return 0.0
 
+    def read_chany1(self):
+        if self.data_ready:
+            self.logger.debug('reading chany1 size %s', self.device.data[0, :].shape)
+            print(self.device.data[0, :20])
+            return self.device.data[0, :]
+        else:
+            msg = '%s data is not ready' % self.device_name
+            self.logger.error(msg)
+            self.error_stream(msg)
+            # self.logger.debug('', exc_info=True)
+            return []
+
     def read_raw_data(self):
         if self.data_ready:
-            self.logger.error('data size %s', self.device.data.shape)
+            self.logger.debug('reading data size %s', self.device.data.shape)
             return self.device.data
         else:
             msg = '%s data is not ready' % self.device_name
@@ -244,13 +271,56 @@ class PicoPyServer(Device):
         return self.device.ready()
 
     def set_sampling(self):
+        # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
+        cv = self.get_device_property('channels', '1').split(' ')
+        for v in cv:
+            try:
+                self.channels.append(int(v))
+            except:
+                pass
         # read sampling interval and number of points
         self.points = self.get_device_property('points_per_channel', 1000)
         self.record_us = self.get_device_property('channel_record_time_us', 1000000)
         # set sampling interval and number of points
         self.device.set_timing(self.channels, self.points, self.record_us)
-        self.raw_data.dim_x = len(self.channels)
-        self.raw_data.dim_y = self.points
+        # set properties for chany1
+        self.set_channel_properties(self.chany1, self.device.data[0, :])
+        # prop = self.chany1.get_properties()
+        # prop.display_unit = self.device.scale
+        # prop.max_value = self.device.max_adc
+        # self.chany1.set_properties(prop)
+        # self.chany1.set_value(self.device.data[0, :])
+        # set properties for raw_data
+        # self.set_channel_properties(self.raw_data)
+        # self.raw_data.set_value(self.device.data)
+
+    def set_channel_properties(self, chan, value=None, props={}):
+        prop = chan.get_properties()
+        prop.display_unit = self.device.scale
+        prop.max_value = self.device.max_adc
+        try:
+            for p in props:
+                if hasattr(chan, p):
+                    setattr(chan, p, props[p])
+        except:
+            pass
+        chan.set_properties(prop)
+        if value is not None:
+            chan.set_value(value)
+
+    def set_trigger(self):
+        # set trigger
+        self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
+        self.trigger_auto = self.get_device_property('trigger_auto', 0)
+        self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
+        self.trigger_channel = self.get_device_property('trigger_channel', 1)
+        self.trigger_dir = self.get_device_property('trigger_direction', 0)
+        self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
+        self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
+        self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
+        self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
+                                self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
+                                self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay)
 
     @command(dtype_in=int)
     def setLogLevel(self, level):
@@ -320,6 +390,10 @@ def looping():
                     dev.device.read()
                     dev.record_initiated = False
                     dev.data_ready = True
+                    msg = '%s reading finished, data is ready' % dev.device_name
+                    dev.logger.info(msg)
+                    dev.info_stream(msg)
+                    print(dev.device.data[0, :20])
             except:
                 dev.record_initiated = False
                 dev.data_ready = False
