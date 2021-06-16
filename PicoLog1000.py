@@ -40,8 +40,8 @@ class PicoLog1000:
         self.times = None
         self.info = None
         self.timeout = None
-        self.overflow = None
-        self.trigger = None
+        self.overflow = False
+        self.trigger = 0.0
         self.info = {}
         #
         self.run_time = 0.0

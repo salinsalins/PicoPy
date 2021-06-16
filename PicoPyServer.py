@@ -68,16 +68,16 @@ class PicoPyServer(Device):
                       unit="V", format="%f",
                       doc="Volts per quantum")
 
-    trigger = attribute(label="scale", dtype=float,
+    trigger = attribute(label="trigger", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="V", format="%f",
+                        unit="%", format="%f",
                         doc="Trigger position in %")
 
-    overflow = attribute(label="scale", dtype=int,
+    overflow = attribute(label="overflow", dtype=int,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
-                         unit="V", format="%f",
+                         unit="", format="%f",
                          doc="Trigger position in %")
 
     sampling = attribute(label="sampling", dtype=float,
@@ -91,7 +91,7 @@ class PicoPyServer(Device):
                          max_dim_x=1000000,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
-                         unit="", format="%f",
+                         unit="V", format="%f",
                          doc="Raw data in ADC quanta")
 
     # times = attribute(label="times", dtype=[[numpy.float64]],
@@ -119,7 +119,7 @@ class PicoPyServer(Device):
                                    unit="", format="",
                                    doc="Is record operation in progress")
 
-    data_ready = attribute(label="record_in_progress", dtype=bool,
+    data_ready = attribute(label="data_ready", dtype=bool,
                            display_level=DispLevel.OPERATOR,
                            access=AttrWriteType.READ,
                            unit="", format="",
@@ -134,7 +134,7 @@ class PicoPyServer(Device):
         self.device_proxy = None
         self.channels = []
         self.record_initiated = False
-        self.data_ready = False
+        self.data_ready_value = False
         self.init_result = None
         try:
             self.set_state(DevState.INIT)
@@ -227,7 +227,7 @@ class PicoPyServer(Device):
             return 0.0
 
     def read_chany1(self):
-        if self.data_ready:
+        if self.data_ready_value:
             self.logger.debug('reading chany1, size %s', self.device.data[0, :].shape)
             return self.device.data[0, :]
         else:
@@ -238,7 +238,7 @@ class PicoPyServer(Device):
             return []
 
     def read_raw_data(self):
-        if self.data_ready:
+        if self.data_ready_value:
             self.logger.debug('reading data size %s', self.device.data.shape)
             return self.device.data
         else:
@@ -249,7 +249,7 @@ class PicoPyServer(Device):
             return []
 
     def read_times(self):
-        if self.data_ready:
+        if self.data_ready_value:
             return self.device.times
         else:
             msg = '%s data is not ready' % self.device_name
@@ -262,7 +262,7 @@ class PicoPyServer(Device):
         return self.record_initiated
 
     def read_data_ready(self):
-        return self.data_ready
+        return self.data_ready_value
 
     def set_sampling(self):
         # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
@@ -329,14 +329,14 @@ class PicoPyServer(Device):
                     self.info_stream(msg)
                     return
             self.record_initiated = True
-            self.data_ready = False
+            self.data_ready_value = False
             self.device.run()
             msg = '%s Recording started' % self.device_name
             self.logger.info(msg)
             self.info_stream(msg)
         except:
             self.record_initiated = False
-            self.data_ready = False
+            self.data_ready_value = False
             self.logger.debug('', exc_info=True)
 
     @command(dtype_in=None)
@@ -353,13 +353,13 @@ class PicoPyServer(Device):
         try:
             self.device.stop()
             self.record_initiated = False
-            self.data_ready = False
+            self.data_ready_value = False
             msg = '%s Recording stopped' % self.device_name
             self.logger.info(msg)
             self.info_stream(msg)
         except:
             self.record_initiated = False
-            self.data_ready = False
+            self.data_ready_value = False
             self.logger.debug('', exc_info=True)
 
     def get_device_property(self, prop: str, default=None):
@@ -392,13 +392,13 @@ def looping():
                     dev.info_stream(msg)
                     dev.device.read()
                     dev.record_initiated = False
-                    dev.data_ready = True
+                    dev.data_ready_value = True
                     msg = '%s reading finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
                     dev.info_stream(msg)
             except:
                 dev.record_initiated = False
-                dev.data_ready = False
+                dev.data_ready_value = False
                 msg = '%s reading data error' % dev.device_name
                 dev.logger.info(msg)
                 dev.info_stream(msg)
