@@ -56,7 +56,7 @@ class PicoPyServer(Device):
                      unit="", format="%s",
                      doc="Info of PicoLog1000 series device")
 
-    ping = attribute(label="Ping_time", dtype=float,
+    ping = attribute(label="ping_time", dtype=float,
                      display_level=DispLevel.OPERATOR,
                      access=AttrWriteType.READ,
                      unit=" s", format="%f",
@@ -74,7 +74,7 @@ class PicoPyServer(Device):
                          unit="ms", format="%f",
                          doc="Sampling in milliseconds between points in each channel")
 
-    raw_data = attribute(label="Raw_Data", dtype=[[numpy.uint16]],
+    raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
                          max_dim_y=16,
                          max_dim_x=1000000,
                          display_level=DispLevel.OPERATOR,
