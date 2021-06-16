@@ -41,7 +41,7 @@ class PicoLog1000:
         self.info = None
         self.timeout = None
         self.overflow = False
-        self.trigger = 0.0
+        self.trigger = 0
         self.info = {}
         #
         self.run_time = 0.0
@@ -133,8 +133,8 @@ class PicoLog1000:
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
         self.data = np.empty((nc, self.points), dtype=np.uint16, order='F')
-        t = np.linspace(0, (self.points - 1) * self.sampling, self.points)
-        self.times = np.empty(self.data.shape)
+        t = np.linspace(0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        self.times = np.empty(self.data.shape, dtype=np.float32)
         for i in range(nc):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
         if self.record_us != channel_record_us or self.points != channel_points:
@@ -215,13 +215,13 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000Stop(self.handle)
         assert_pico_ok(self.last_status)
 
-    def set_trigger(self, enabled=False, channel="PL1000_CHANNEL_1", edge=0,
+    def set_trigger(self, enabled=0, channel="PL1000_CHANNEL_1", edge=0,
                     threshold=2048, hysteresis=100, delay_percent=10.0,
                     auto_trigger=False, auto_ms=1000):
         self.assert_open()
         if isinstance(channel, str):
             channel = pl1000.PL1000Inputs[channel]
-        self.last_status = pl1000.pl1000SetTrigger(self.handle, ctypes.c_uint16(enabled),
+        self.last_status = pl1000.pl1000SetTrigger(self.handle, ctypes.c_uint16(int(enabled)),
                                                    ctypes.c_uint16(int(auto_trigger)), ctypes.c_uint16(int(auto_ms)),
                                                    ctypes.c_uint16(int(channel)), ctypes.c_uint16(int(edge)),
                                                    ctypes.c_uint16(int(threshold)), ctypes.c_uint16(int(hysteresis)),
@@ -241,21 +241,11 @@ class PicoLog1000:
 if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
-    pl.set_timing([1, 2], 100000, 2000000)
-    print(pl.ping(), pl.get_last_status())
-    print(pl.ready(), pl.get_last_status())
+    pl.set_timing([1, 2], 1000, 20000)
+    pl.set_trigger(1, 1, 0, 1024, )
     pl.run()
     pl.wait_result()
     pl.read()
-    print(pl.get_last_status())
-    print(pl.ready(), pl.get_last_status())
-    pl.run()
-    pl.wait_result()
-    pl.read()
-    print(pl.get_last_status())
-    print(pl.ping(), pl.get_last_status())
-    print(pl.ready(), pl.get_last_status())
-    print(pl.ping(), pl.get_last_status())
     pl.close()
 
     import matplotlib.pyplot as plt

@@ -71,14 +71,14 @@ class PicoPyServer(Device):
     trigger = attribute(label="trigger", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="%", format="%f",
-                        doc="Trigger position in %")
+                        unit="", format="%10.0f",
+                        doc="Trigger index")
 
     overflow = attribute(label="overflow", dtype=int,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
-                         unit="", format="%f",
-                         doc="Trigger position in %")
+                         unit="", format="%d",
+                         doc="Was the overflow in recorded data")
 
     sampling = attribute(label="sampling", dtype=float,
                          display_level=DispLevel.OPERATOR,
@@ -112,6 +112,16 @@ class PicoPyServer(Device):
                        access=AttrWriteType.READ,
                        unit="V", format="%5.3f",
                        doc="Data for channel 1 in ADC quanta")
+
+    chanx1 = attribute(label="Time_Channel_1", dtype=[numpy.float32],
+                       #min_value=0,
+                       #max_value=4095,
+                       max_dim_x=1000000,
+                       max_dim_y=0,
+                       display_level=DispLevel.OPERATOR,
+                       access=AttrWriteType.READ,
+                       unit="ms", format="%5.3f",
+                       doc="Times for channel 1 in ms")
 
     record_in_progress = attribute(label="record_in_progress", dtype=bool,
                                    display_level=DispLevel.OPERATOR,
@@ -248,9 +258,9 @@ class PicoPyServer(Device):
             # self.logger.debug('', exc_info=True)
             return []
 
-    def read_times(self):
+    def read_chanx1(self):
         if self.data_ready_value:
-            return self.device.times
+            return self.device.times[0, :]
         else:
             msg = '%s data is not ready' % self.device_name
             self.logger.error(msg)
@@ -281,6 +291,7 @@ class PicoPyServer(Device):
         # set properties for chany1
         self.set_channel_properties(self.chany1, self.device.data[0, :])
         self.set_channel_properties(self.raw_data, self.device.data)
+        self.chanx1.set_value(self.device.times[0, :])
 
     def set_channel_properties(self, chan, value=None, props=None):
         if props is None:
@@ -308,9 +319,10 @@ class PicoPyServer(Device):
         self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
         self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
         self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
-        self.device.set_trigger(self.trigger_enabled, self.trigger_auto,
-                                self.trigger_auto_ms, self.trigger_channel, self.trigger_dir,
-                                self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay)
+        self.device.set_trigger(self.trigger_enabled, self.trigger_channel,
+                                self.trigger_dir, self.trigger_threshold,
+                                self.trigger_hysteresis, self.trigger_delay,
+                                self.trigger_auto, self.trigger_auto_ms)
 
     @command(dtype_in=int)
     def set_log_level(self, level):
@@ -384,6 +396,8 @@ class PicoPyServer(Device):
 def looping():
     time.sleep(0.01)
     for dev in PicoPyServer.devices:
+        #print(dev.device.times[0, :20])
+        #dev.read_attribute('chanx1').value[:20]
         if dev.record_initiated:
             try:
                 if dev.device.ready():
