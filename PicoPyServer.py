@@ -74,20 +74,20 @@ class PicoPyServer(Device):
                          unit="ms", format="%f",
                          doc="Sampling in milliseconds between points in each channel")
 
-    # raw_data = attribute(label="Raw_Data", dtype=[[numpy.uint16]],
-    #                      max_dim_x=16,
-    #                      max_dim_y=1000000,
-    #                      display_level=DispLevel.OPERATOR,
-    #                      access=AttrWriteType.READ,
-    #                      unit="", format="%d",
-    #                      doc="Raw data in ADC quanta")
+    raw_data = attribute(label="Raw_Data", dtype=[[numpy.uint16]],
+                         max_dim_y=16,
+                         max_dim_x=1000000,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ,
+                         unit="", format="%f",
+                         doc="Raw data in ADC quanta")
 
     # data = attribute(label="data", dtype=[[numpy.float64]],
     #                  max_dim_x=16,
     #                  max_dim_y=1000000,
     #                  display_level=DispLevel.OPERATOR,
     #                  access=AttrWriteType.READ,
-    #                  unit="", format="%f",
+    #                  unit="", format="%5.3f",
     #                  doc="Data in volts")
     #
     # times = attribute(label="times", dtype=[[numpy.float64]],
@@ -107,7 +107,7 @@ class PicoPyServer(Device):
                        display_level=DispLevel.OPERATOR,
                        access=AttrWriteType.READ,
                        unit="V", format="%5.3f",
-                       doc="Raw data for channel 1 in ADC quanta")
+                       doc="Data for channel 1 in ADC quanta")
 
     # ready = attribute(label="Ready", dtype=bool,
     #                   display_level=DispLevel.OPERATOR,
@@ -206,11 +206,11 @@ class PicoPyServer(Device):
 
     def read_chany1(self):
         if self.data_ready:
-            self.logger.debug('reading chany1 size %s', self.device.data[0, :].shape)
+            self.logger.debug('reading chany1, size %s', self.device.data[0, :].shape)
             return self.device.data[0, :]
         else:
             msg = '%s data is not ready' % self.device_name
-            self.logger.error(msg)
+            self.logger.warning(msg)
             self.error_stream(msg)
             # self.logger.debug('', exc_info=True)
             return []
@@ -252,6 +252,7 @@ class PicoPyServer(Device):
     def set_sampling(self):
         # config input channels "1, 2, 4, 12" -> [1, 2, 4, 12]
         cv = self.get_device_property('channels', '1').split(' ')
+        self.channels = []
         for v in cv:
             try:
                 self.channels.append(int(v))
@@ -264,14 +265,7 @@ class PicoPyServer(Device):
         self.device.set_timing(self.channels, self.points, self.record_us)
         # set properties for chany1
         self.set_channel_properties(self.chany1, self.device.data[0, :])
-        # prop = self.chany1.get_properties()
-        # prop.display_unit = self.device.scale
-        # prop.max_value = self.device.max_adc
-        # self.chany1.set_properties(prop)
-        # self.chany1.set_value(self.device.data[0, :])
-        # set properties for raw_data
-        # self.set_channel_properties(self.raw_data)
-        # self.raw_data.set_value(self.device.data)
+        self.set_channel_properties(self.raw_data, self.device.data)
 
     def set_channel_properties(self, chan, value=None, props=None):
         if props is None:
@@ -325,7 +319,8 @@ class PicoPyServer(Device):
         self.logger.info(msg)
         self.info_stream(msg)
 
-    def readConfig(self, value):
+    @command(dtype_in=None)
+    def readConfig(self):
         self.set_sampling()
         # set trigger
         self.set_trigger()
