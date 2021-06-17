@@ -35,12 +35,12 @@ class PicoLog1000:
         self.channels = []
         self.points = 0
         self.record_us = 0
-        self.sampling = 0
+        self.sampling = 0.0
         self.data = None
         self.times = None
         self.info = None
         self.timeout = None
-        self.overflow = False
+        self.overflow = 0
         self.trigger = 0
         self.info = {}
         #
