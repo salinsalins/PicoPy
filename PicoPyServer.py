@@ -43,7 +43,7 @@ class PicoPyServer(Device):
     devices = []
 
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
-
+    # scalar attributes
     device_type = attribute(label="type", dtype=str,
                             display_level=DispLevel.OPERATOR,
                             access=AttrWriteType.READ,
@@ -86,23 +86,18 @@ class PicoPyServer(Device):
                          unit="ms", format="%f",
                          doc="Sampling in milliseconds between points in each channel")
 
-    raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
-                         max_dim_y=16,
-                         max_dim_x=1000000,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ,
-                         unit="V", format="%f",
-                         doc="Raw data in ADC quanta")
+    record_in_progress = attribute(label="record_in_progress", dtype=bool,
+                                   display_level=DispLevel.OPERATOR,
+                                   access=AttrWriteType.READ,
+                                   unit="", format="",
+                                   doc="Is record operation in progress")
 
-    # times = attribute(label="times", dtype=[[numpy.float64]],
-    #                   max_dim_x=16,
-    #                   max_dim_y=1000000,
-    #                   display_level=DispLevel.OPERATOR,
-    #                   access=AttrWriteType.READ,
-    #                   unit="s", format="%f",
-    #                   doc="ADC acquisition time in seconds")
-    #
-
+    data_ready = attribute(label="data_ready", dtype=bool,
+                           display_level=DispLevel.OPERATOR,
+                           access=AttrWriteType.READ,
+                           unit="", format="",
+                           doc="Is data ready for reading")
+    # vector attributes
     chany1 = attribute(label="Raw_Data_Channel_1", dtype=[numpy.uint16],
                        min_value=0,
                        max_value=4095,
@@ -122,18 +117,23 @@ class PicoPyServer(Device):
                        access=AttrWriteType.READ,
                        unit="ms", format="%5.3f",
                        doc="Times for channel 1 in ms")
+    # image attributes
+    raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
+                         max_dim_y=16,
+                         max_dim_x=1000000,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ,
+                         unit="V", format="%f",
+                         doc="Raw data in ADC quanta")
 
-    record_in_progress = attribute(label="record_in_progress", dtype=bool,
-                                   display_level=DispLevel.OPERATOR,
-                                   access=AttrWriteType.READ,
-                                   unit="", format="",
-                                   doc="Is record operation in progress")
-
-    data_ready = attribute(label="data_ready", dtype=bool,
-                           display_level=DispLevel.OPERATOR,
-                           access=AttrWriteType.READ,
-                           unit="", format="",
-                           doc="Is data ready for reading")
+    # times = attribute(label="times", dtype=[[numpy.float32]],
+    #                   max_dim_y=16,
+    #                   max_dim_x=1000000,
+    #                   display_level=DispLevel.OPERATOR,
+    #                   access=AttrWriteType.READ,
+    #                   unit="s", format="%f",
+    #                   doc="ADC acquisition time in seconds")
+    #
 
     def init_device(self):
         if self not in PicoPyServer.devices:
@@ -260,6 +260,7 @@ class PicoPyServer(Device):
 
     def read_chanx1(self):
         if self.data_ready_value:
+            ## print(self.device.times[0, :].dtype)
             return self.device.times[0, :]
         else:
             msg = '%s data is not ready' % self.device_name
@@ -391,6 +392,14 @@ class PicoPyServer(Device):
         except:
             result = default
         return result
+
+    def set_device_property(self, prop: str):
+        try:
+            if not hasattr(self, 'device_proxy') or self.device_proxy is None:
+                self.device_proxy = tango.DeviceProxy(self.device_name)
+            pr = self.device_proxy.get_property(prop)[prop]
+        except:
+            self.logger.debug('', exc_info=True)
 
 
 def looping():
