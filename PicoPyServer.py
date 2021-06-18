@@ -326,12 +326,13 @@ class PicoPyServer(Device):
     @command(dtype_in=int)
     def start_recording(self, value):
         try:
-            if value != 0:
+            if value > 0:
                 if self.record_initiated:
                     msg = '%s Can not start - record in progress' % self.device_name
                     self.logger.info(msg)
                     self.info_stream(msg)
                     return
+            if value > 1:
                 if not self.picolog.ready():
                     msg = '%s Can not start - device not ready' % self.device_name
                     self.logger.info(msg)
