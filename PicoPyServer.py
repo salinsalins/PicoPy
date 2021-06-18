@@ -293,7 +293,10 @@ class PicoPyServer(Device):
         return str(self.channels_list)
 
     def write_channels(self, value):
-        self.channels_list = list_from_str(value)
+        if isinstance(value, list):
+            self.channels_list = value
+        else:
+            self.channels_list = list_from_str(value)
         self.set_device_property('channels', str(value))
         self.picolog.set_timing(self.channels_list, self.points, self.record_us)
 
