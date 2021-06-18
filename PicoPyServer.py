@@ -62,6 +62,7 @@ def get_attribute_property(attrbt: attribute, property: str):
 
 
 class PicoPyServer(Device):
+    version = '1.0'
     devices = []
 
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
@@ -375,9 +376,12 @@ class PicoPyServer(Device):
 
     @command(dtype_in=None)
     def read_config(self):
+        self.stop_recording()
         self.set_sampling()
         # set trigger
         self.set_trigger()
+        self.record_initiated = False
+        self.data_ready_value = False
         msg = '%s Config applied' % self.device_name
         self.logger.debug(msg)
         self.debug_stream(msg)
@@ -469,8 +473,8 @@ class PicoPyServer(Device):
         self.trigger_channel = self.get_device_property('trigger_channel', 1)
         self.trigger_dir = self.get_device_property('trigger_direction', 0)
         self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
-        self.trigger_hysteresis = self.get_device_property('trigger_hysteresis,', 100)
-        self.trigger_delay = self.get_device_property('trigger_delay,', 10.0)
+        self.trigger_hysteresis = self.get_device_property('trigger_hysteresis', 100)
+        self.trigger_delay = self.get_device_property('trigger_delay', 10.0)
         # set trigger
         self.picolog.set_trigger(self.trigger_enabled, self.trigger_channel,
                                  self.trigger_dir, self.trigger_threshold,
