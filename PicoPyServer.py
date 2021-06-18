@@ -48,6 +48,18 @@ def list_from_str(instr):
     return result
 
 
+def set_attribute_property(self, attrbt: attribute, property: str, value: str):
+    ap = attrbt.get_properties()
+    setattr(ap, property, value)
+    attrbt.set_properties(ap)
+
+
+def get_attribute_property(self, attrbt: attribute, property: str):
+    ap = attrbt.get_properties()
+    return getattr(ap, property)
+
+
+
 class PicoPyServer(Device):
     devices = []
 
@@ -139,7 +151,7 @@ class PicoPyServer(Device):
                        doc="Data for channel 1 in ADC quanta")
 
     chanx1 = attribute(label="Time_Channel_1", dtype=[numpy.float32],
-                       # min_value=0,
+                       min_value=0.0,
                        # max_value=4095,
                        max_dim_x=1000000,
                        max_dim_y=0,
@@ -408,8 +420,8 @@ class PicoPyServer(Device):
         prop.max_value = self.picolog.max_adc
         try:
             for p in props:
-                if hasattr(chan, p):
-                    setattr(chan, p, props[p])
+                if hasattr(prop, p):
+                    setattr(prop, p, props[p])
         except:
             pass
         chan.set_properties(prop)
@@ -421,7 +433,9 @@ class PicoPyServer(Device):
         self.set_voltage_channel_properties(self.chany1, self.picolog.data[0, :])
         self.set_voltage_channel_properties(self.raw_data, self.picolog.data)
         # set properties for chanx1 and raw_data
-        self.chanx1.set_value(self.picolog.times[0, :])
+        self.set_voltage_channel_properties(self.chanx1, self.picolog.times[0, :],
+                                            {'display_unit': 1.0, 'max_value': self.picolog.times[0, :].max()})
+        # self.chanx1.set_value(self.picolog.times[0, :])
 
     def set_sampling(self):
         # read input channels list
@@ -480,5 +494,4 @@ def looping():
 
 
 if __name__ == "__main__":
-    # PicoPyServer.run_server(post_init_callback=post_init_callback, event_loop=looping)
     PicoPyServer.run_server(event_loop=looping)
