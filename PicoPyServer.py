@@ -298,7 +298,7 @@ class PicoPyServer(Device):
 
     def read_chany1(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading chany1 data, size %s', self.device_name, self.picolog.data[0, :].shape)
+            self.logger.debug('%s reading chany1 data, size: %s', self.device_name, self.picolog.data[0, :].shape)
             return self.picolog.data[0, :]
         else:
             msg = '%s data is not ready' % self.device_name
@@ -309,7 +309,7 @@ class PicoPyServer(Device):
 
     def read_chanx1(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading chanx1 data, size %s', self.device_name, self.picolog.data[0, :].shape)
+            self.logger.debug('%s reading chanx1 data, size: %s', self.device_name, self.picolog.data[0, :].shape)
             return self.picolog.times[0, :]
         else:
             msg = '%s data is not ready' % self.device_name
@@ -320,7 +320,7 @@ class PicoPyServer(Device):
 
     def read_raw_data(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading data, size %s', self.device_name, self.picolog.data.shape)
+            self.logger.debug('%s reading data, size: %s', self.device_name, self.picolog.data.shape)
             return self.picolog.data
         else:
             msg = '%s data is not ready' % self.device_name
@@ -331,7 +331,7 @@ class PicoPyServer(Device):
 
     def read_times(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading times, size %s', self.device_name, self.picolog.times.shape)
+            self.logger.debug('%s reading times, size: %s', self.device_name, self.picolog.times.shape)
             return self.picolog.times
         else:
             msg = '%s data is not ready' % self.device_name
