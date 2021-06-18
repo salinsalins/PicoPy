@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-PicoLog1216 tango device server"""
+PicoLog1000 series tango device server
+
+"""
 
 import sys
 import os
@@ -48,16 +50,15 @@ def list_from_str(instr):
     return result
 
 
-def set_attribute_property(self, attrbt: attribute, property: str, value: str):
+def set_attribute_property(attrbt: attribute, property: str, value: str):
     ap = attrbt.get_properties()
     setattr(ap, property, value)
     attrbt.set_properties(ap)
 
 
-def get_attribute_property(self, attrbt: attribute, property: str):
+def get_attribute_property(attrbt: attribute, property: str):
     ap = attrbt.get_properties()
     return getattr(ap, property)
-
 
 
 class PicoPyServer(Device):
@@ -166,16 +167,16 @@ class PicoPyServer(Device):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
-                         doc="Raw data in ADC quanta")
+                         doc="Raw data from ADC")
 
-    # times = attribute(label="times", dtype=[[numpy.float32]],
-    #                   max_dim_y=16,
-    #                   max_dim_x=1000000,
-    #                   display_level=DispLevel.OPERATOR,
-    #                   access=AttrWriteType.READ,
-    #                   unit="s", format="%f",
-    #                   doc="ADC acquisition time in seconds")
-    #
+    times = attribute(label="times", dtype=[[numpy.float32]],
+                      max_dim_y=16,
+                      max_dim_x=1000000,
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ,
+                      unit="ms", format="%f",
+                      doc="ADC acquisition times in milliseconds")
+
 
     def init_device(self):
         if self not in PicoPyServer.devices:
@@ -319,8 +320,19 @@ class PicoPyServer(Device):
 
     def read_raw_data(self):
         if self.data_ready_value:
-            self.logger.debug('reading data size %s', self.picolog.data.shape)
+            self.logger.debug('%s reading data, size %s', self.device_name, self.picolog.data.shape)
             return self.picolog.data
+        else:
+            msg = '%s data is not ready' % self.device_name
+            self.logger.error(msg)
+            self.error_stream(msg)
+            # self.logger.debug('', exc_info=True)
+            return []
+
+    def read_times(self):
+        if self.data_ready_value:
+            self.logger.debug('%s reading times, size %s', self.device_name, self.picolog.times.shape)
+            return self.picolog.times
         else:
             msg = '%s data is not ready' % self.device_name
             self.logger.error(msg)
