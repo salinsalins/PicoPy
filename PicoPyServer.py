@@ -234,7 +234,7 @@ class PicoPyServer(Device):
             self.picolog.close()
         except:
             pass
-        self.set_state(DevState.OFF)
+        self.set_state(DevState.CLOSE)
         msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
         self.info_stream(msg)
@@ -363,15 +363,17 @@ class PicoPyServer(Device):
                     self.logger.info(msg)
                     self.info_stream(msg)
                     return
+            self.picolog.run()
             self.record_initiated = True
             self.data_ready_value = False
-            self.picolog.run()
+            self.set_state(DevState.RUNNING)
             msg = '%s Recording started' % self.device_name
             self.logger.info(msg)
             self.info_stream(msg)
         except:
             self.record_initiated = False
             self.data_ready_value = False
+            self.set_state(DevState.FAULT)
             self.logger.debug('', exc_info=True)
 
     @command(dtype_in=None)
@@ -382,6 +384,7 @@ class PicoPyServer(Device):
         self.set_trigger()
         self.record_initiated = False
         self.data_ready_value = False
+        self.set_state(DevState.STANDBY)
         msg = '%s Config applied' % self.device_name
         self.logger.debug(msg)
         self.debug_stream(msg)
@@ -392,12 +395,14 @@ class PicoPyServer(Device):
             self.picolog.stop()
             self.record_initiated = False
             self.data_ready_value = False
+            self.set_state(DevState.STANDBY)
             msg = '%s Recording stopped' % self.device_name
             self.logger.info(msg)
             self.info_stream(msg)
         except:
             self.record_initiated = False
             self.data_ready_value = False
+            self.set_state(DevState.FAULT)
             self.logger.debug('', exc_info=True)
 
     def assert_proxy(self):
