@@ -62,7 +62,7 @@ def get_attribute_property(attrbt: attribute, property: str):
 
 
 class PicoPyServer(Device):
-    version = '1.0'
+    version = '1.1'
     devices = []
 
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
@@ -111,7 +111,7 @@ class PicoPyServer(Device):
 
     record_in_progress = attribute(label="record_in_progress", dtype=bool,
                                    display_level=DispLevel.OPERATOR,
-                                   access=AttrWriteType.READ,
+                                   access=AttrWriteType.READ_WRITE,
                                    unit="", format="",
                                    doc="Is record operation in progress")
 
@@ -267,6 +267,18 @@ class PicoPyServer(Device):
 
     def read_record_in_progress(self):
         return self.record_initiated
+
+    def write_record_in_progress(self, value: bool):
+        if value:
+            if self.record_initiated:
+                return
+            else:
+                self.start_recording()
+        else:
+            if self.record_initiated:
+                self.stop_recording()
+            else:
+                return
 
     def read_data_ready(self):
         return self.data_ready_value
