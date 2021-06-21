@@ -360,7 +360,7 @@ class PicoPyServer(Device):
         self.info_stream(msg)
 
     @command(dtype_in=int)
-    def start_recording(self, value):
+    def _start(self, value):
         try:
             if value > 0:
                 if self.record_initiated:
@@ -386,6 +386,12 @@ class PicoPyServer(Device):
             self.data_ready_value = False
             self.set_state(DevState.FAULT)
             self.logger.debug('', exc_info=True)
+
+    @command(dtype_in=None)
+    def start_recording(self):
+        self.stop_recording()
+        self.read_config()
+        self._start(0)
 
     @command(dtype_in=None)
     def read_config(self):
