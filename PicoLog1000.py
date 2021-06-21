@@ -281,7 +281,7 @@ if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
     pl.set_timing([1, 2], 1000, 20000)
-    pl.set_trigger(1, 1, 0, 1024, )
+    pl.set_trigger(0, 1, 0, 1024, )
     pl.run()
     pl.wait_result()
     pl.read()

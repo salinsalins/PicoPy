@@ -303,8 +303,10 @@ class PicoPyServer(Device):
     def read_chany1(self):
         if self.data_ready_value:
             self.logger.debug('%s reading chany1 data, size: %s', self.device_name, self.picolog.data[0, :].shape)
+            self.chany1.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.data[0, :]
         else:
+            self.chany1.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s data is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
@@ -314,8 +316,10 @@ class PicoPyServer(Device):
     def read_chanx1(self):
         if self.data_ready_value:
             self.logger.debug('%s reading chanx1 data, size: %s', self.device_name, self.picolog.data[0, :].shape)
+            self.chanx1.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.times[0, :]
         else:
+            self.chanx1.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s data is not ready' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
@@ -325,8 +329,10 @@ class PicoPyServer(Device):
     def read_raw_data(self):
         if self.data_ready_value:
             self.logger.debug('%s reading data, size: %s', self.device_name, self.picolog.data.shape)
+            self.raw_data.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.data
         else:
+            self.raw_data.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s data is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
@@ -336,8 +342,10 @@ class PicoPyServer(Device):
     def read_times(self):
         if self.data_ready_value:
             self.logger.debug('%s reading times, size: %s', self.device_name, self.picolog.times.shape)
+            self.times.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.times
         else:
+            self.times.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s data is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
