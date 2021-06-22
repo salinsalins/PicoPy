@@ -62,7 +62,7 @@ def get_attribute_property(attrbt: attribute, property: str):
 
 
 class PicoPyServer(Device):
-    version = '1.1'
+    version = '1.2'
     devices = []
 
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
@@ -141,6 +141,18 @@ class PicoPyServer(Device):
                          access=AttrWriteType.READ_WRITE,
                          unit="", format="%s",
                          doc="Channels list")
+
+    start_time = attribute(label="start_time", dtype=float,
+                           display_level=DispLevel.OPERATOR,
+                           access=AttrWriteType.READ,
+                           unit="s", format="%f",
+                           doc="Recording start time")
+
+    stop_time = attribute(label="stop_time", dtype=float,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ,
+                          unit="s", format="%f",
+                          doc="Recording stop time")
     # vector attributes
     chany1 = attribute(label="Raw_Data_Channel_1", dtype=[numpy.uint16],
                        min_value=0,
@@ -178,7 +190,6 @@ class PicoPyServer(Device):
                       unit="ms", format="%f",
                       doc="ADC acquisition times in milliseconds")
 
-
     def init_device(self):
         if self not in PicoPyServer.devices:
             PicoPyServer.devices.append(self)
@@ -190,6 +201,8 @@ class PicoPyServer(Device):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
+        self.start_time_value = 0.0
+        self.stop_time_value = 0.0
         try:
             self.set_state(DevState.INIT)
             self.device_name = self.get_name()
@@ -219,7 +232,7 @@ class PicoPyServer(Device):
             self.set_state(DevState.STANDBY)
         except Exception as ex:
             self.init_result = ex
-            msg = 'Exception initialization PicoLog device %s' % self.device_name
+            msg = '%s Exception initialing PicoLog: %s' % (self.device_name, sys.exc_info()[1])
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
@@ -250,6 +263,9 @@ class PicoPyServer(Device):
             v = self.picolog.ping()
             return v
         except:
+            msg = '%s Ping error %s' % (self.device_name, sys.exc_info()[1])
+            self.logger.info(msg)
+            self.info_stream(msg)
             self.logger.debug('', exc_info=True)
             return -1.0
 
@@ -312,14 +328,20 @@ class PicoPyServer(Device):
         self.set_device_property('channels', str(value))
         self.picolog.set_timing(self.channels_list, self.points, self.record_us)
 
+    def read_start_time(self):
+        return self.start_time_value
+
+    def read_stop_time(self):
+        return self.stop_time_value
+
     def read_chany1(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading chany1 data, size: %s', self.device_name, self.picolog.data[0, :].shape)
+            self.logger.debug('%s Reading chany1%s', self.device_name, self.picolog.data[0, :].shape)
             self.chany1.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.data[0, :]
         else:
             self.chany1.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s data is not ready' % self.device_name
+            msg = '%s Data is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
             # self.logger.debug('', exc_info=True)
@@ -327,12 +349,12 @@ class PicoPyServer(Device):
 
     def read_chanx1(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading chanx1 data, size: %s', self.device_name, self.picolog.data[0, :].shape)
+            self.logger.debug('%s Deading chanx1%s', self.device_name, self.picolog.data[0, :].shape)
             self.chanx1.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.times[0, :]
         else:
             self.chanx1.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s data is not ready' % self.device_name
+            msg = '%s Data is not ready' % self.device_name
             self.logger.error(msg)
             self.error_stream(msg)
             # self.logger.debug('', exc_info=True)
@@ -340,12 +362,12 @@ class PicoPyServer(Device):
 
     def read_raw_data(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading data, size: %s', self.device_name, self.picolog.data.shape)
+            self.logger.debug('%s Deading raw_data%s', self.device_name, self.picolog.data.shape)
             self.raw_data.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.data
         else:
             self.raw_data.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s data is not ready' % self.device_name
+            msg = '%s Rata is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
             # self.logger.debug('', exc_info=True)
@@ -353,12 +375,12 @@ class PicoPyServer(Device):
 
     def read_times(self):
         if self.data_ready_value:
-            self.logger.debug('%s reading times, size: %s', self.device_name, self.picolog.times.shape)
+            self.logger.debug('%s Reading times%s', self.device_name, self.picolog.times.shape)
             self.times.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.times
         else:
             self.times.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s data is not ready' % self.device_name
+            msg = '%s Data is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
             # self.logger.debug('', exc_info=True)
@@ -387,6 +409,7 @@ class PicoPyServer(Device):
                     self.info_stream(msg)
                     return
             self.picolog.run()
+            self.start_time_value = time.time()
             self.record_initiated = True
             self.data_ready_value = False
             self.set_state(DevState.RUNNING)
@@ -397,6 +420,9 @@ class PicoPyServer(Device):
             self.record_initiated = False
             self.data_ready_value = False
             self.set_state(DevState.FAULT)
+            msg = '%s Recording start error' % self.device_name
+            self.logger.warning(msg)
+            self.error_stream(msg)
             self.logger.debug('', exc_info=True)
 
     @command(dtype_in=None)
@@ -414,7 +440,7 @@ class PicoPyServer(Device):
         self.record_initiated = False
         self.data_ready_value = False
         self.set_state(DevState.STANDBY)
-        msg = '%s Config applied' % self.device_name
+        msg = '%s New config applied' % self.device_name
         self.logger.debug(msg)
         self.debug_stream(msg)
 
@@ -432,6 +458,9 @@ class PicoPyServer(Device):
             self.record_initiated = False
             self.data_ready_value = False
             self.set_state(DevState.FAULT)
+            msg = '%s Recording stop error' % self.device_name
+            self.logger.warning(msg)
+            self.error_stream(msg)
             self.logger.debug('', exc_info=True)
 
     def assert_proxy(self):
@@ -452,6 +481,7 @@ class PicoPyServer(Device):
             else:
                 result = type(default)(result)
         except:
+            self.logger.debug('Error reading property %s for %s', prop, self.device_name)
             result = default
         return result
 
@@ -460,6 +490,7 @@ class PicoPyServer(Device):
             self.assert_proxy()
             self.device_proxy.put_property({prop: value})
         except:
+            self.logger.info('Error writing property %s for %s', prop, self.device_name)
             self.logger.debug('', exc_info=True)
 
     def set_voltage_channel_properties(self, chan, value=None, props=None):
@@ -517,28 +548,24 @@ class PicoPyServer(Device):
 
 
 def looping():
-    time.sleep(0.01)
+    time.sleep(0.001)
     for dev in PicoPyServer.devices:
-        # print(dev.device.times[0, :20])
-        # dev.read_attribute('chanx1').value[:20]
         if dev.record_initiated:
             try:
                 if dev.picolog.ready():
-                    msg = '%s recording finished, reading data' % dev.device_name
-                    dev.logger.info(msg)
-                    dev.info_stream(msg)
+                    dev.stop_time_value = time.time()
                     dev.picolog.read()
                     dev.record_initiated = False
                     dev.data_ready_value = True
-                    msg = '%s reading finished, data is ready' % dev.device_name
+                    msg = '%s Recording finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
                     dev.info_stream(msg)
             except:
                 dev.record_initiated = False
                 dev.data_ready_value = False
-                msg = '%s reading data error' % dev.device_name
-                dev.logger.info(msg)
-                dev.info_stream(msg)
+                msg = '%s Reading data error' % dev.device_name
+                dev.logger.warning(msg)
+                dev.error_stream(msg)
                 dev.logger.debug('', exc_info=True)
     # PicoPyServer.logger.debug('loop exit')
 
