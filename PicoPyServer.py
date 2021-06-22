@@ -53,7 +53,7 @@ def get_attribute_property(attrbt: attribute, property: str):
 
 
 class PicoPyServer(Device):
-    version = '1.2'
+    version = '1.3'
     devices = []
 
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
@@ -192,6 +192,16 @@ class PicoPyServer(Device):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
+        self.points = 1000
+        self.record_us = 1000000
+        self.trigger_enabled = 0
+        self.trigger_auto = 0
+        self.trigger_auto_ms = 0
+        self.trigger_channel = 1
+        self.trigger_dir = 0
+        self.trigger_threshold = 2048
+        self.trigger_hysteresis = 100
+        self.trigger_delay = 10.0
         try:
             self.set_state(DevState.INIT)
             self.device_name = self.get_name()
@@ -376,11 +386,18 @@ class PicoPyServer(Device):
             return []
 
     @command(dtype_in=int)
-    def set_log_level(self, level):
+    def _set_log_level(self, level):
         self.logger.setLevel(level)
         msg = '%s Log level set to %d' % (self.device_name, level)
         self.logger.info(msg)
         self.info_stream(msg)
+
+    @command(dtype_in=str, dtype_out=str)
+    def _read_picolog_attribute(self, name):
+        if hasattr(self.picolog, name):
+            return str(getattr(self.picolog, name))
+        else:
+            return 'Attribute not found'
 
     @command(dtype_in=int)
     def _start(self, value):
@@ -417,11 +434,11 @@ class PicoPyServer(Device):
     @command(dtype_in=None)
     def start_recording(self):
         self.stop_recording()
-        self.read_config()
+        self._read_config()
         self._start(0)
 
     @command(dtype_in=None)
-    def read_config(self):
+    def _read_config(self):
         self.stop_recording()
         self.set_sampling()
         # set trigger
