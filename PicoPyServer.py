@@ -6,22 +6,13 @@ PicoLog1000 series tango device server
 
 """
 
-import sys
-import os
 import time
-import logging
+import sys
 import numpy
-import traceback
-import math
-from math import isnan
-from threading import Thread, Lock
-import winsound
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command, pipe, device_property
-# from Utils import *
-import ctypes
 
 from PicoLog1000 import *
 
