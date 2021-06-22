@@ -201,8 +201,6 @@ class PicoPyServer(Device):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
-        self.start_time_value = 0.0
-        self.stop_time_value = 0.0
         try:
             self.set_state(DevState.INIT)
             self.device_name = self.get_name()
@@ -329,10 +327,10 @@ class PicoPyServer(Device):
         self.picolog.set_timing(self.channels_list, self.points, self.record_us)
 
     def read_start_time(self):
-        return self.start_time_value
+        return self.picolog.run_time
 
     def read_stop_time(self):
-        return self.stop_time_value
+        return self.picolog.read_time
 
     def read_chany1(self):
         if self.data_ready_value:

@@ -177,7 +177,6 @@ class PicoLog1000:
             if self.timeout is not None and timeout is None:
                 timeout = self.timeout
             while not ready.value:
-                # print('*')
                 if timeout is not None and time.time() - t0 > timeout:
                     break
                 self.last_status = pl1000.pl1000Ready(self.handle, ctypes.byref(ready))
@@ -237,45 +236,45 @@ class PicoLog1000:
         else:
             return -1.0
 
-
-class FakePicoLog1000(PicoLog1000):
-
-    def ready(self, wait=False, timeout=None):
-        self.assert_open()
-        self.last_status = pl1000.PICO_STATUS['PICO_OK']
-        return True
-
-    def read(self, wait=False):
-        self.assert_open()
-        if wait:
-            self.ready(True)
-        if not self.ready():
-            self.logger.warning('Read on not ready device')
-        self.last_status = pl1000.PICO_STATUS['PICO_OK']
-        self.read_time = time.time()
-        self.overflow = 0
-        self.trigger = 100
-
-    def close(self):
-        self.last_status = pl1000.PICO_STATUS['PICO_OK']
-
-    def stop(self):
-        self.assert_open()
-        self.last_status = pl1000.PICO_STATUS['PICO_OK']
-
-    def set_trigger(self, enabled=False, channel="PL1000_CHANNEL_1", edge=0,
-                    threshold=2048, hysteresis=100, delay_percent=10.0,
-                    auto_trigger=False, auto_ms=1000):
-        self.assert_open()
-        if isinstance(channel, str):
-            channel = pl1000.PL1000Inputs[channel]
-        self.last_status = pl1000.PICO_STATUS['PICO_OK']
-
-    def ping(self):
-        t0 = time.time()
-        self.last_status = pl1000.PICO_STATUS['PICO_OK']
-        return time.time() - t0
-
+#
+# class FakePicoLog1000(PicoLog1000):
+#
+#     def ready(self, wait=False, timeout=None):
+#         self.assert_open()
+#         self.last_status = pl1000.PICO_STATUS['PICO_OK']
+#         return True
+#
+#     def read(self, wait=False):
+#         self.assert_open()
+#         if wait:
+#             self.ready(True)
+#         if not self.ready():
+#             self.logger.warning('Read on not ready device')
+#         self.last_status = pl1000.PICO_STATUS['PICO_OK']
+#         self.read_time = time.time()
+#         self.overflow = 0
+#         self.trigger = 100
+#
+#     def close(self):
+#         self.last_status = pl1000.PICO_STATUS['PICO_OK']
+#
+#     def stop(self):
+#         self.assert_open()
+#         self.last_status = pl1000.PICO_STATUS['PICO_OK']
+#
+#     def set_trigger(self, enabled=False, channel="PL1000_CHANNEL_1", edge=0,
+#                     threshold=2048, hysteresis=100, delay_percent=10.0,
+#                     auto_trigger=False, auto_ms=1000):
+#         self.assert_open()
+#         if isinstance(channel, str):
+#             channel = pl1000.PL1000Inputs[channel]
+#         self.last_status = pl1000.PICO_STATUS['PICO_OK']
+#
+#     def ping(self):
+#         t0 = time.time()
+#         self.last_status = pl1000.PICO_STATUS['PICO_OK']
+#         return time.time() - t0
+#
 
 if __name__ == "__main__":
     pl = PicoLog1000()
