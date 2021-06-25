@@ -120,6 +120,7 @@ class PicoLog1000:
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
             cnls[i] = channels[i]
+            #cnls[i] = int(channels[i])
         t_us = ctypes.c_uint32(channel_record_us)
         n = ctypes.c_uint32(channel_points)
         self.last_status = pl1000.pl1000SetInterval(self.handle, ctypes.byref(t_us),
@@ -137,6 +138,7 @@ class PicoLog1000:
         self.times = np.empty(self.data.shape, dtype=np.float32)
         for i in range(nc):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
+            #self.times[i, :] = t
         if self.record_us != channel_record_us or self.points != channel_points:
             self.logger.warning('Time interval has been corrected from %s to %s us',
                                 channel_record_us, self.record_us)
@@ -279,8 +281,9 @@ class PicoLog1000:
 if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
-    pl.set_timing([1, 2], 1000, 20000)
-    pl.set_trigger(0, 1, 0, 1024, )
+    pl.set_timing([3, 1, 3, 1], 10000, 200000)
+    #pl.set_timing([i+1 for i in range(16)], 10, 20000)
+    pl.set_trigger(0, 1, 0, 1024, -50.0)
     pl.run()
     pl.wait_result()
     pl.read()

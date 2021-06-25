@@ -53,7 +53,7 @@ def get_attribute_property(attrbt: attribute, property: str):
 
 
 class PicoPyServer(Device):
-    version = '1.3'
+    version = '2.0'
     devices = []
 
     logger = config_logger(name=__qualname__, level=logging.DEBUG)
@@ -145,25 +145,35 @@ class PicoPyServer(Device):
                           unit="s", format="%f",
                           doc="Recording stop time")
     # vector attributes
-    chany1 = attribute(label="Raw_Data_Channel_1", dtype=[numpy.uint16],
-                       min_value=0,
-                       max_value=4095,
-                       max_dim_x=1000000,
-                       max_dim_y=0,
-                       display_level=DispLevel.OPERATOR,
-                       access=AttrWriteType.READ,
-                       unit="V", format="%5.3f",
-                       doc="Data for channel 1 in ADC quanta")
+    chany01 = attribute(label="Channel_01_volts", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 01 measurements. 16 bit integers, converted to Volts by display_units")
 
-    chanx1 = attribute(label="Time_Channel_1", dtype=[numpy.float32],
-                       min_value=0.0,
-                       # max_value=4095,
-                       max_dim_x=1000000,
-                       max_dim_y=0,
-                       display_level=DispLevel.OPERATOR,
-                       access=AttrWriteType.READ,
-                       unit="ms", format="%5.3f",
-                       doc="Times for channel 1 in ms")
+    # chany02 = attribute(label="Channel_02_volts", dtype=[numpy.uint16],
+    #                     min_value=0,
+    #                     max_value=4095,
+    #                     max_dim_x=1000000,
+    #                     max_dim_y=0,
+    #                     display_level=DispLevel.OPERATOR,
+    #                     access=AttrWriteType.READ,
+    #                     unit="V", format="%5.3f",
+    #                     doc="Channel 02 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
+                        min_value=0.0,
+                        # max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="ms", format="%5.3f",
+                        doc="Times for channel 01 counts. 32 bit floats in ms")
     # image attributes
     raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
                          max_dim_y=16,
@@ -171,7 +181,7 @@ class PicoPyServer(Device):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
-                         doc="Raw data from ADC")
+                         doc="Raw data from ADC for all channels. 16 bit integers, converted to Volts by display_units")
 
     times = attribute(label="times", dtype=[[numpy.float32]],
                       max_dim_y=16,
@@ -179,7 +189,7 @@ class PicoPyServer(Device):
                       display_level=DispLevel.OPERATOR,
                       access=AttrWriteType.READ,
                       unit="ms", format="%f",
-                      doc="ADC acquisition times in milliseconds")
+                      doc="ADC acquisition times for all channels. 32 bit floats in ms")
 
     def init_device(self):
         if self not in PicoPyServer.devices:
@@ -333,31 +343,43 @@ class PicoPyServer(Device):
     def read_stop_time(self):
         return self.picolog.read_time
 
-    def read_chany1(self):
-        if self.data_ready_value:
-            self.logger.debug('%s Reading chany1%s', self.device_name, self.picolog.data[0, :].shape)
-            self.chany1.set_quality(AttrQuality.ATTR_VALID)
-            return self.picolog.data[0, :]
-        else:
-            self.chany1.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s Data is not ready' % self.device_name
-            self.logger.warning(msg)
+    def read_channel_data(self, channel: int, times=False):
+        channel_attribute_name = 'chany%02i' % channel
+        if not hasattr(self, channel_attribute_name):
+            msg = '%s Read for unknown channel %02i' % (self.device_name, channel)
+            self.logger.info(msg)
             self.error_stream(msg)
-            # self.logger.debug('', exc_info=True)
-            return []
+            numpy.zeros(0, dtype=numpy.uint16)
+        channel_attribute = getattr(self, channel_attribute_name)
+        if not self.data_ready_value:
+            channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
+            msg = '%s Data is not ready for channel %s' % (self.device_name, channel)
+            self.logger.info(msg)
+            self.error_stream(msg)
+            numpy.zeros(0, dtype=numpy.uint16)
+        if channel not in self.channels_list:
+            channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
+            msg = '%s Channel %s is not set for measurements' % (self.device_name, channel)
+            self.logger.info(msg)
+            self.error_stream(msg)
+            numpy.zeros(0, dtype=numpy.uint16)
+        channel_index = self.channels_list.index(channel)
+        self.logger.debug('%s Reading channel %s: %s', self.device_name, channel, self.picolog.data[0, :].shape)
+        channel_attribute.set_quality(AttrQuality.ATTR_VALID)
+        if not times:
+            return self.picolog.data[channel_index, :]
+        else:
+            return self.picolog.times[channel_index, :]
 
-    def read_chanx1(self):
-        if self.data_ready_value:
-            self.logger.debug('%s Deading chanx1%s', self.device_name, self.picolog.data[0, :].shape)
-            self.chanx1.set_quality(AttrQuality.ATTR_VALID)
-            return self.picolog.times[0, :]
-        else:
-            self.chanx1.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s Data is not ready' % self.device_name
-            self.logger.error(msg)
-            self.error_stream(msg)
-            # self.logger.debug('', exc_info=True)
-            return []
+    def read_chany01(self):
+        try:
+            return self.read_channel_data(1)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chanx01(self):
+        return self.read_channel_data(1, times=True)
 
     def read_raw_data(self):
         if self.data_ready_value:
@@ -517,10 +539,10 @@ class PicoPyServer(Device):
 
     def set_channel_properties(self):
         # set properties for chany1 and raw_data
-        self.set_voltage_channel_properties(self.chany1, self.picolog.data[0, :])
+        self.set_voltage_channel_properties(self.chany01, self.picolog.data[0, :])
         self.set_voltage_channel_properties(self.raw_data, self.picolog.data)
         # set properties for chanx1 and raw_data
-        self.set_voltage_channel_properties(self.chanx1, self.picolog.times[0, :],
+        self.set_voltage_channel_properties(self.chanx01, self.picolog.times[0, :],
                                             {'display_unit': 1.0, 'max_value': self.picolog.times[0, :].max()})
         # self.chanx1.set_value(self.picolog.times[0, :])
 
