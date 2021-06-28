@@ -344,27 +344,27 @@ class PicoPyServer(Device):
         return self.picolog.read_time
 
     def read_channel_data(self, channel: int, times=False):
-        channel_attribute_name = 'chany%02i' % channel
-        if not hasattr(self, channel_attribute_name):
-            msg = '%s Read for unknown channel %02i' % (self.device_name, channel)
+        channel_name = 'chany%02i' % channel
+        if not hasattr(self, channel_name):
+            msg = '%s Read for unknown channel %02i' % (self.device_name, channel_name)
             self.logger.info(msg)
             self.error_stream(msg)
-            numpy.zeros(0, dtype=numpy.uint16)
-        channel_attribute = getattr(self, channel_attribute_name)
+            return numpy.zeros(0, dtype=numpy.uint16)
+        channel_attribute = getattr(self, channel_name)
         if not self.data_ready_value:
             channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s Data is not ready for channel %s' % (self.device_name, channel)
+            msg = '%s Data is not ready for %s' % (self.device_name, channel_name)
             self.logger.info(msg)
             self.error_stream(msg)
-            numpy.zeros(0, dtype=numpy.uint16)
+            return numpy.zeros(0, dtype=numpy.uint16)
         if channel not in self.channels_list:
             channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s Channel %s is not set for measurements' % (self.device_name, channel)
+            msg = '%s Channel %s is not set for measurements' % (self.device_name, channel_name)
             self.logger.info(msg)
             self.error_stream(msg)
-            numpy.zeros(0, dtype=numpy.uint16)
+            return numpy.zeros(0, dtype=numpy.uint16)
         channel_index = self.channels_list.index(channel)
-        self.logger.debug('%s Reading channel %s: %s', self.device_name, channel, self.picolog.data[0, :].shape)
+        self.logger.debug('%s Reading %s: %s', self.device_name, channel_name, self.picolog.data[0, :].shape)
         channel_attribute.set_quality(AttrQuality.ATTR_VALID)
         if not times:
             return self.picolog.data[channel_index, :]
