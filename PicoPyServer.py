@@ -145,7 +145,7 @@ class PicoPyServer(Device):
                           unit="s", format="%f",
                           doc="Recording stop time")
     # vector attributes
-    chany01 = attribute(label="Channel_01_volts", dtype=[numpy.uint16],
+    chany01 = attribute(label="Channel_01", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=4095,
                         max_dim_x=1000000,
@@ -155,15 +155,155 @@ class PicoPyServer(Device):
                         unit="V", format="%5.3f",
                         doc="Channel 01 measurements. 16 bit integers, converted to Volts by display_units")
 
-    # chany02 = attribute(label="Channel_02_volts", dtype=[numpy.uint16],
-    #                     min_value=0,
-    #                     max_value=4095,
-    #                     max_dim_x=1000000,
-    #                     max_dim_y=0,
-    #                     display_level=DispLevel.OPERATOR,
-    #                     access=AttrWriteType.READ,
-    #                     unit="V", format="%5.3f",
-    #                     doc="Channel 02 measurements. 16 bit integers, converted to Volts by display_units")
+    chany02 = attribute(label="Channel_02", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 02 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany03 = attribute(label="Channel_03", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 03 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany04 = attribute(label="Channel_04", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 04 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany05 = attribute(label="Channel_05", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 05 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany06 = attribute(label="Channel_06", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 06 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany07 = attribute(label="Channel_07", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 07 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany08 = attribute(label="Channel_08", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 08 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany09 = attribute(label="Channel_09", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 09 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany10 = attribute(label="Channel_10", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 10 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany11 = attribute(label="Channel_11", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 11 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany12 = attribute(label="Channel_12", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 12 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany13 = attribute(label="Channel_13", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 13 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany14 = attribute(label="Channel_14", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 14 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany15 = attribute(label="Channel_15", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 15 measurements. 16 bit integers, converted to Volts by display_units")
+
+    chany16 = attribute(label="Channel_16", dtype=[numpy.uint16],
+                        min_value=0,
+                        max_value=4095,
+                        max_dim_x=1000000,
+                        max_dim_y=0,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="V", format="%5.3f",
+                        doc="Channel 16 measurements. 16 bit integers, converted to Volts by display_units")
 
     chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
                         min_value=0.0,
@@ -346,7 +486,7 @@ class PicoPyServer(Device):
     def read_channel_data(self, channel: int, times=False):
         channel_name = 'chany%02i' % channel
         if not hasattr(self, channel_name):
-            msg = '%s Read for unknown channel %02i' % (self.device_name, channel_name)
+            msg = '%s Read for unknown channel %s' % (self.device_name, channel_name)
             self.logger.info(msg)
             self.error_stream(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
@@ -372,11 +512,80 @@ class PicoPyServer(Device):
             return self.picolog.times[channel_index, :]
 
     def read_chany01(self):
+        return self.read_channel_data(1)
+
+    def read_chany02(self):
         try:
-            return self.read_channel_data(1)
+            return self.read_channel_data(2)
         except:
             self.logger.debug('', exc_info=True)
             return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany03(self):
+        try:
+            return self.read_channel_data(3)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany04(self):
+        try:
+            return self.read_channel_data(4)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany05(self):
+        try:
+            return self.read_channel_data(5)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany06(self):
+        try:
+            return self.read_channel_data(6)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany07(self):
+        try:
+            return self.read_channel_data(7)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany08(self):
+        try:
+            return self.read_channel_data(8)
+        except:
+            self.logger.debug('', exc_info=True)
+            return numpy.zeros(0, dtype=numpy.uint16)
+
+    def read_chany09(self):
+        return self.read_channel_data(9)
+
+    def read_chany10(self):
+        return self.read_channel_data(10)
+
+    def read_chany11(self):
+        return self.read_channel_data(11)
+
+    def read_chany12(self):
+        return self.read_channel_data(12)
+
+    def read_chany13(self):
+        return self.read_channel_data(13)
+
+    def read_chany14(self):
+        return self.read_channel_data(14)
+
+    def read_chany15(self):
+        return self.read_channel_data(15)
+
+    def read_chany16(self):
+        return self.read_channel_data(16)
 
     def read_chanx01(self):
         return self.read_channel_data(1, times=True)
