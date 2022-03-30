@@ -16,6 +16,8 @@ from tango.server import Device, attribute, command, pipe, device_property
 
 from PicoLog1000 import *
 
+sys.path.append('../TangoUtils')
+
 NaN = float('nan')
 
 
