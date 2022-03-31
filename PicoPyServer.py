@@ -14,12 +14,22 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command, pipe, device_property
 
-sys.path.append('../TangoUtils')
-from TangoUtils import config_logger, restore_settings, save_settings, log_exception, Configuration, \
-    LOG_FORMAT_STRING_SHORT
-from TangoServerPrototype import TangoServerPrototype
-
 from PicoLog1000 import *
+
+NaN = float('nan')
+
+
+def config_logger(name: str = __name__, level: int = logging.DEBUG):
+    logger = logging.getLogger(name)
+    if not logger.hasHandlers():
+        logger.propagate = False
+        logger.setLevel(level)
+        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        logger.addHandler(console_handler)
+    return logger
 
 
 def list_from_str(instr):
@@ -42,11 +52,11 @@ def get_attribute_property(attrbt: attribute, property: str):
     return getattr(ap, property)
 
 
-class PicoPyServer(TangoServerPrototype):
-    server_version = '2.0'
-    server_name = 'PicoLog1000 series tango device server'
-    device_list = []
+class PicoPyServer(Device):
+    version = '2.0'
+    devices = []
 
+    logger = config_logger(name=__qualname__, level=logging.DEBUG)
     # scalar attributes
     picolog_type = attribute(label="type", dtype=str,
                              display_level=DispLevel.OPERATOR,
@@ -63,14 +73,14 @@ class PicoPyServer(TangoServerPrototype):
     ping = attribute(label="ping_time", dtype=float,
                      display_level=DispLevel.OPERATOR,
                      access=AttrWriteType.READ,
-                     unit="s", format="%f",
+                     unit=" s", format="%f",
                      doc="Ping time")
 
     scale = attribute(label="scale", dtype=float,
                       display_level=DispLevel.OPERATOR,
                       access=AttrWriteType.READ,
                       unit="V", format="%f",
-                      doc="Volts per ADC quantum")
+                      doc="Volts per quantum")
 
     trigger = attribute(label="trigger", dtype=float,
                         display_level=DispLevel.OPERATOR,
@@ -82,7 +92,7 @@ class PicoPyServer(TangoServerPrototype):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="", format="%d",
-                         doc="Is there the overflow in recorded data")
+                         doc="Was the overflow in recorded data")
 
     sampling = attribute(label="sampling", dtype=float,
                          display_level=DispLevel.OPERATOR,
@@ -322,9 +332,8 @@ class PicoPyServer(TangoServerPrototype):
                       doc="ADC acquisition times for all channels. 32 bit floats in ms")
 
     def init_device(self):
-        super().init_device(self)
         if self not in PicoPyServer.devices:
-            PicoPyServer.device_list.append(self)
+            PicoPyServer.devices.append(self)
         self.picolog = None
         self.device_type_str = "Unknown PicoLog device"
         self.device_name = ''
@@ -372,7 +381,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.STANDBY)
         except Exception as ex:
             self.init_result = ex
-            msg = '%s Exception initiating PicoLog: %s' % (self.device_name, sys.exc_info()[1])
+            msg = '%s Exception initialing PicoLog: %s' % (self.device_name, sys.exc_info()[1])
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
@@ -695,6 +704,32 @@ class PicoPyServer(TangoServerPrototype):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
             self.device_proxy = tango.DeviceProxy(self.device_name)
 
+    def get_device_property(self, prop: str, default=None):
+        try:
+            self.assert_proxy()
+            pr = self.device_proxy.get_property(prop)[prop]
+            result = None
+            if len(pr) > 0:
+                result = pr[0]
+            if default is None:
+                return result
+            if result is None or result == '':
+                result = default
+            else:
+                result = type(default)(result)
+        except:
+            self.logger.debug('Error reading property %s for %s', prop, self.device_name)
+            result = default
+        return result
+
+    def set_device_property(self, prop: str, value: str):
+        try:
+            self.assert_proxy()
+            self.device_proxy.put_property({prop: value})
+        except:
+            self.logger.info('Error writing property %s for %s', prop, self.device_name)
+            self.logger.debug('', exc_info=True)
+
     def set_voltage_channel_properties(self, chan, value=None, props=None):
         if props is None:
             props = {}
@@ -751,7 +786,7 @@ class PicoPyServer(TangoServerPrototype):
 
 def looping():
     time.sleep(0.001)
-    for dev in PicoPyServer.device_list:
+    for dev in PicoPyServer.devices:
         if dev.record_initiated:
             try:
                 if dev.picolog.ready():
