@@ -458,7 +458,7 @@ class PicoPyServer(TangoServerPrototype):
         self.trigger_delay = 10.0
         # set logger and device proxy in super and then call self.set_config()
         super().init_device()
-        if self not in PicoPyServer.devices:
+        if self not in PicoPyServer.device_list:
             PicoPyServer.device_list.append(self)
 
     def set_config(self):
@@ -489,7 +489,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.STANDBY)
         except Exception as ex:
             self.init_result = ex
-            log_exception('Exception initiating PicoLog %s', self.device_name)
+            log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
 
     def delete_device(self):
@@ -588,7 +588,7 @@ class PicoPyServer(TangoServerPrototype):
     def read_stop_time(self):
         return self.picolog.read_time
 
-    def name_from_number(self, n: int, xy='x'):
+    def name_from_number(self, n: int, xy='y'):
         return 'chan%s%02i' % (xy, n)
 
     def read_channel_data(self, channel: int, xy='y'):
@@ -821,7 +821,9 @@ class PicoPyServer(TangoServerPrototype):
 
     def set_channel_properties(self, chan, props=None):
         try:
-            if not isinstance(chan, attribute):
+            if isinstance(chan, int):
+                chan = self.name_from_number(chan)
+            if isinstance(chan, str):
                 chan = getattr(self, str(chan))
             if props is None:
                 props = {}
@@ -836,7 +838,7 @@ class PicoPyServer(TangoServerPrototype):
                 pass
             chan.set_properties(prop)
         except:
-            log_exception('Properties set error')
+            log_exception(self, 'Properties set error')
 
     def configure_channels(self):
         for i in range(1, 16):
@@ -845,7 +847,7 @@ class PicoPyServer(TangoServerPrototype):
                                         {'display_unit': 1.0,
                                          'max_value': self.picolog.times[0, :].max()})
         self.set_channel_properties(self.raw_data)
-        self.self.raw_data.set_value(self.picolog.data)
+        self.raw_data.set_value(self.picolog.data)
 
     def set_sampling(self):
         # read input channels list
@@ -859,14 +861,14 @@ class PicoPyServer(TangoServerPrototype):
 
     def set_trigger(self):
         # raed trigger parameters
-        self.trigger_enabled = self.self.config.get('trigger_enabled', 0)
-        self.trigger_auto = self.self.config.get('trigger_auto', 0)
-        self.trigger_auto_ms = self.self.config.get('trigger_auto_ms', 0)
-        self.trigger_channel = self.self.config.get('trigger_channel', 1)
-        self.trigger_dir = self.self.config.get('trigger_direction', 0)
-        self.trigger_threshold = self.self.config.get('trigger_threshold', 2048)
-        self.trigger_hysteresis = self.self.config.get('trigger_hysteresis', 100)
-        self.trigger_delay = self.self.config.get('trigger_delay', 10.0)
+        self.trigger_enabled = self.config.get('trigger_enabled', 0)
+        self.trigger_auto = self.config.get('trigger_auto', 0)
+        self.trigger_auto_ms = self.config.get('trigger_auto_ms', 0)
+        self.trigger_channel = self.config.get('trigger_channel', 1)
+        self.trigger_dir = self.config.get('trigger_direction', 0)
+        self.trigger_threshold = self.config.get('trigger_threshold', 2048)
+        self.trigger_hysteresis = self.config.get('trigger_hysteresis', 100)
+        self.trigger_delay = self.config.get('trigger_delay', 10.0)
         # set trigger
         self.picolog.set_trigger(self.trigger_enabled, self.trigger_channel,
                                  self.trigger_dir, self.trigger_threshold,
