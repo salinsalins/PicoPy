@@ -370,7 +370,7 @@ class PicoPyServer(TangoServerPrototype):
             # set sampling interval channels and number of points
             self.set_sampling()
             # set properties for channels:
-            self.set_channel_properties()
+            self.configure_channels()
             # set trigger
             self.set_trigger()
             # OK message
@@ -470,7 +470,7 @@ class PicoPyServer(TangoServerPrototype):
             self.channels_list = value
         else:
             self.channels_list = list_from_str(value)
-        self.set_device_property('channels', str(value))
+        self.set_device_property('channels', str(self.channels_list))
         self.picolog.set_timing(self.channels_list, self.points, self.record_us)
 
     def read_start_time(self):
@@ -479,12 +479,14 @@ class PicoPyServer(TangoServerPrototype):
     def read_stop_time(self):
         return self.picolog.read_time
 
+    def name_from_number(self, n: int, xy='x'):
+        return 'chan%s%02i' % (xy, n)
+
     def read_channel_data(self, channel: int, times=False):
-        channel_name = 'chany%02i' % channel
+        channel_name = self.name_from_number(channel)
         if not hasattr(self, channel_name):
             msg = '%s Read for unknown channel %s' % (self.device_name, channel_name)
             self.logger.info(msg)
-            self.error_stream(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
         channel_attribute = getattr(self, channel_name)
         if not self.data_ready_value:
@@ -511,53 +513,25 @@ class PicoPyServer(TangoServerPrototype):
         return self.read_channel_data(1)
 
     def read_chany02(self):
-        try:
-            return self.read_channel_data(2)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(2)
 
     def read_chany03(self):
-        try:
-            return self.read_channel_data(3)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(3)
 
     def read_chany04(self):
-        try:
-            return self.read_channel_data(4)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(4)
 
     def read_chany05(self):
-        try:
-            return self.read_channel_data(5)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(5)
 
     def read_chany06(self):
-        try:
-            return self.read_channel_data(6)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(6)
 
     def read_chany07(self):
-        try:
-            return self.read_channel_data(7)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(7)
 
     def read_chany08(self):
-        try:
-            return self.read_channel_data(8)
-        except:
-            self.logger.debug('', exc_info=True)
-            return numpy.zeros(0, dtype=numpy.uint16)
+        return self.read_channel_data(8)
 
     def read_chany09(self):
         return self.read_channel_data(9)
@@ -588,20 +562,19 @@ class PicoPyServer(TangoServerPrototype):
 
     def read_raw_data(self):
         if self.data_ready_value:
-            self.logger.debug('%s Deading raw_data%s', self.device_name, self.picolog.data.shape)
+            self.logger.debug('%s Reading raw_data %s', self.device_name, self.picolog.data.shape)
             self.raw_data.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.data
         else:
             self.raw_data.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s Rata is not ready' % self.device_name
+            msg = '%s Data is not ready' % self.device_name
             self.logger.warning(msg)
             self.error_stream(msg)
-            # self.logger.debug('', exc_info=True)
             return []
 
     def read_times(self):
         if self.data_ready_value:
-            self.logger.debug('%s Reading times%s', self.device_name, self.picolog.times.shape)
+            self.logger.debug('%s Reading times %s', self.device_name, self.picolog.times.shape)
             self.times.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.times
         else:
@@ -700,22 +673,29 @@ class PicoPyServer(TangoServerPrototype):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
             self.device_proxy = tango.DeviceProxy(self.device_name)
 
-    def set__channel_properties(self, chan, props=None):
-        if props is None:
-            props = {}
-        prop = chan.get_properties()
-        prop.display_unit = self.picolog.scale
-        prop.max_value = self.picolog.max_adc
+    def set_channel_properties(self, chan, props=None):
         try:
-            for p in props:
-                if hasattr(prop, p):
-                    setattr(prop, p, props[p])
+            if not isinstance(chan, attribute):
+                chan = getattr(self, str(chan))
+            if props is None:
+                props = {}
+            prop = chan.get_properties()
+            prop.display_unit = self.picolog.scale
+            prop.max_value = self.picolog.max_adc
+            try:
+                for p in props:
+                    if hasattr(prop, p):
+                        setattr(prop, p, props[p])
+            except:
+                pass
+            chan.set_properties(prop)
         except:
-            pass
-        chan.set_properties(prop)
+            log_exception('Properties set error')
 
-    def set_channel_properties(self):
-        self.set__channel_properties(self.chany01)
+    def configure_channels(self):
+        for i in range(16):
+            self.set_channel_properties(self.name_from_number(i))
+            self.set_channel_properties(self.name_from_number(i, xy='x'))
         self.self.chany01.set_value(self.picolog.data[0, :])
         self.set__channel_properties(self.raw_data)
         self.self.raw_data.set_value(self.picolog.data)
