@@ -34,7 +34,7 @@ def list_from_str(input_str):
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version = '2.0'
+    server_version = '2.1'
     server_name = 'PicoLog1000 series tango device server'
     device_list = []
 
