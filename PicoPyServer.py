@@ -9,6 +9,7 @@ PicoLog1000 series tango device server
 import time
 import sys
 import numpy
+import json
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
@@ -22,10 +23,12 @@ from TangoServerPrototype import TangoServerPrototype
 from PicoLog1000 import *
 
 
-def list_from_str(instr):
+def list_from_str(input_str):
     result = []
     try:
-        result = eval(instr)
+        result = json.loads(input_str)
+        if not isinstance(result, list):
+            return []
     except:
         pass
     return result
