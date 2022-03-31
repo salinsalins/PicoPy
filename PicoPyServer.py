@@ -24,14 +24,13 @@ from PicoLog1000 import *
 
 
 def list_from_str(input_str):
-    result = []
     try:
         result = json.loads(input_str)
         if not isinstance(result, list):
             return []
+        return result
     except:
-        pass
-    return result
+        return []
 
 
 def set_attribute_property(attrbt: attribute, property: str, value: str):
@@ -124,7 +123,7 @@ class PicoPyServer(TangoServerPrototype):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ_WRITE,
                          unit="", format="%s",
-                         doc="Channels list")
+                         doc='Channels list "[1, 2, 5]"')
 
     start_time = attribute(label="start_time", dtype=float,
                            display_level=DispLevel.OPERATOR,
@@ -137,7 +136,10 @@ class PicoPyServer(TangoServerPrototype):
                           access=AttrWriteType.READ,
                           unit="s", format="%f",
                           doc="Recording stop time")
-    # vector attributes
+    # !!!!!!!!!!!!!!!!!!!!!
+    # Channel numbering starts from 1 !!! (according manufacturer manuals and API)
+    # !!!!!!!!!!!!!!!!!!!!!
+    # channels for recorded ADC samples
     chany01 = attribute(label="Channel_01", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=4095,
@@ -146,7 +148,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 01 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 01 data. 16 bit integers. Volts = data * display_units")
 
     chany02 = attribute(label="Channel_02", dtype=[numpy.uint16],
                         min_value=0,
@@ -298,40 +300,39 @@ class PicoPyServer(TangoServerPrototype):
                         unit="V", format="%5.3f",
                         doc="Channel 16 measurements. 16 bit integers, converted to Volts by display_units")
 
+    # channels for ADC times 32 bit floats in ms
     chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        # max_value=4095,
                         max_dim_x=1000000,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="ms", format="%5.3f",
                         doc="Times for channel 01 counts. 32 bit floats in ms")
-    # image attributes
+    # raw data for all channels
     raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
                          max_dim_y=16,
                          max_dim_x=1000000,
+                         min_value=0,
+                         max_value=4095,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
                          doc="Raw data from ADC for all channels. 16 bit integers, converted to Volts by display_units")
-
+    # timings for all  channels 32 bit floats in ms
     times = attribute(label="times", dtype=[[numpy.float32]],
                       max_dim_y=16,
                       max_dim_x=1000000,
+                      min_value=0.0,
                       display_level=DispLevel.OPERATOR,
                       access=AttrWriteType.READ,
                       unit="ms", format="%f",
                       doc="ADC acquisition times for all channels. 32 bit floats in ms")
 
     def init_device(self):
-        super().init_device(self)
-        if self not in PicoPyServer.devices:
-            PicoPyServer.device_list.append(self)
         self.picolog = None
         self.device_type_str = "Unknown PicoLog device"
         self.device_name = ''
-        self.device_proxy = None
         self.channels_list = []
         self.record_initiated = False
         self.data_ready_value = False
@@ -346,13 +347,16 @@ class PicoPyServer(TangoServerPrototype):
         self.trigger_threshold = 2048
         self.trigger_hysteresis = 100
         self.trigger_delay = 10.0
+        # set logger and device proxy in super and then call self.set_config()
+        super().init_device()
+        if self not in PicoPyServer.devices:
+            PicoPyServer.device_list.append(self)
+
+    def set_config(self):
+        super().set_config()
         try:
             self.set_state(DevState.INIT)
             self.device_name = self.get_name()
-            self.device_proxy = tango.DeviceProxy(self.device_name)
-            # read config from device properties
-            level = self.get_device_property('log_level', 10)
-            self.logger.setLevel(level)
             # create PicoLog1000 device
             self.picolog = PicoLog1000()
             self.set_state(DevState.ON)
@@ -365,20 +369,18 @@ class PicoPyServer(TangoServerPrototype):
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
             # set sampling interval channels and number of points
             self.set_sampling()
+            # set properties for channels:
+            self.set_channel_properties()
             # set trigger
             self.set_trigger()
             # OK message
             self.init_result = None
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
             self.logger.info(msg)
-            self.info_stream(msg)
             self.set_state(DevState.STANDBY)
         except Exception as ex:
             self.init_result = ex
-            msg = '%s Exception initiating PicoLog: %s' % (self.device_name, sys.exc_info()[1])
-            self.logger.error(msg)
-            self.error_stream(msg)
-            self.logger.debug('', exc_info=True)
+            log_exception('Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
 
     def delete_device(self):
@@ -698,7 +700,7 @@ class PicoPyServer(TangoServerPrototype):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
             self.device_proxy = tango.DeviceProxy(self.device_name)
 
-    def set_voltage_channel_properties(self, chan, value=None, props=None):
+    def set__channel_properties(self, chan, props=None):
         if props is None:
             props = {}
         prop = chan.get_properties()
@@ -711,29 +713,24 @@ class PicoPyServer(TangoServerPrototype):
         except:
             pass
         chan.set_properties(prop)
-        if value is not None:
-            chan.set_value(value)
 
     def set_channel_properties(self):
-        # set properties for chany1 and raw_data
-        self.set_voltage_channel_properties(self.chany01, self.picolog.data[0, :])
-        self.set_voltage_channel_properties(self.raw_data, self.picolog.data)
-        # set properties for chanx1 and raw_data
-        self.set_voltage_channel_properties(self.chanx01, self.picolog.times[0, :],
-                                            {'display_unit': 1.0, 'max_value': self.picolog.times[0, :].max()})
-        # self.chanx1.set_value(self.picolog.times[0, :])
+        self.set__channel_properties(self.chany01)
+        self.self.chany01.set_value(self.picolog.data[0, :])
+        self.set__channel_properties(self.raw_data)
+        self.self.raw_data.set_value(self.picolog.data)
+        self.set__channel_properties(self.chanx01, {'display_unit': 1.0, 'max_value': self.picolog.times[0, :].max()})
+        self.self.self.chanx01.set_value(self.picolog.times[0, :])
 
     def set_sampling(self):
         # read input channels list
-        value = self.get_device_property('channels', '[1]')
+        value = self.config.get('channels', '[1]')
         self.channels_list = list_from_str(value)
         # read sampling interval and number of points
-        self.points = self.get_device_property('points_per_channel', 1000)
-        self.record_us = self.get_device_property('channel_record_time_us', 1000000)
+        self.points = self.config.get('points_per_channel', 1000)
+        self.record_us = self.config.get('channel_record_time_us', 1000000)
         # set sampling interval and number of points
         self.picolog.set_timing(self.channels_list, self.points, self.record_us)
-        # set properties for channels:
-        self.set_channel_properties()
 
     def set_trigger(self):
         # raed trigger parameters

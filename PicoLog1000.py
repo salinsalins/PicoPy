@@ -130,7 +130,7 @@ class PicoLog1000:
         self.points = n.value
         self.record_us = t_us.value
         self.sampling = (0.001 * self.record_us) / self.points
-        self.logger.debug('%s channels %s; sampling %s ms; %s points; duration %s us',
+        self.logger.debug('PicoLog timing: %s channels %s; sampling %s ms; %s points; duration %s us',
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
         self.data = np.empty((nc, self.points), dtype=np.uint16, order='F')
@@ -138,9 +138,8 @@ class PicoLog1000:
         self.times = np.empty(self.data.shape, dtype=np.float32)
         for i in range(nc):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
-            #self.times[i, :] = t
         if self.record_us != channel_record_us or self.points != channel_points:
-            self.logger.warning('Time interval has been corrected from %s to %s us',
+            self.logger.warning('PicoLog channel record time has been corrected from %s to %s us',
                                 channel_record_us, self.record_us)
             return False
         return True
