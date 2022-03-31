@@ -642,13 +642,6 @@ class PicoPyServer(TangoServerPrototype):
             self.error_stream(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
 
-    @command(dtype_in=int)
-    def _set_log_level(self, level):
-        self.logger.setLevel(level)
-        msg = '%s Log level set to %d' % (self.device_name, level)
-        self.logger.info(msg)
-        self.info_stream(msg)
-
     @command(dtype_in=str, dtype_out=str)
     def _read_picolog_attribute(self, name):
         if hasattr(self.picolog, name):
@@ -770,14 +763,14 @@ class PicoPyServer(TangoServerPrototype):
 
     def set_trigger(self):
         # raed trigger parameters
-        self.trigger_enabled = self.get_device_property('trigger_enabled', 0)
-        self.trigger_auto = self.get_device_property('trigger_auto', 0)
-        self.trigger_auto_ms = self.get_device_property('trigger_auto_ms', 0)
-        self.trigger_channel = self.get_device_property('trigger_channel', 1)
-        self.trigger_dir = self.get_device_property('trigger_direction', 0)
-        self.trigger_threshold = self.get_device_property('trigger_threshold', 2048)
-        self.trigger_hysteresis = self.get_device_property('trigger_hysteresis', 100)
-        self.trigger_delay = self.get_device_property('trigger_delay', 10.0)
+        self.trigger_enabled = self.self.config.get('trigger_enabled', 0)
+        self.trigger_auto = self.self.config.get('trigger_auto', 0)
+        self.trigger_auto_ms = self.self.config.get('trigger_auto_ms', 0)
+        self.trigger_channel = self.self.config.get('trigger_channel', 1)
+        self.trigger_dir = self.self.config.get('trigger_direction', 0)
+        self.trigger_threshold = self.self.config.get('trigger_threshold', 2048)
+        self.trigger_hysteresis = self.self.config.get('trigger_hysteresis', 100)
+        self.trigger_delay = self.self.config.get('trigger_delay', 10.0)
         # set trigger
         self.picolog.set_trigger(self.trigger_enabled, self.trigger_channel,
                                  self.trigger_dir, self.trigger_threshold,
@@ -805,7 +798,7 @@ def looping():
                 dev.logger.warning(msg)
                 dev.error_stream(msg)
                 dev.logger.debug('', exc_info=True)
-    # PicoPyServer.logger.debug('loop exit')
+    # PicoPyServer.logger.debug('loop end')
 
 
 if __name__ == "__main__":
