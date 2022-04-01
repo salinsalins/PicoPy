@@ -464,7 +464,7 @@ class PicoPyServer(TangoServerPrototype):
         self.data_ready_value = False
         self.init_result = None
         # trigger
-        self.trigger_config = ''
+        self.trigger_config_value = {}
         self.trigger_enabled = 0
         self.trigger_auto = 0
         self.trigger_auto_ms = 0
@@ -499,8 +499,9 @@ class PicoPyServer(TangoServerPrototype):
             self.configure_channels()
             # set trigger
             self.set_trigger()
-            # OK message
             self.init_result = None
+            self.trigger_config_value = json.loads(self.config.get('trigger_config', '{"enabled": false}'))
+            # OK message
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
             self.logger.info(msg)
             self.set_state(DevState.STANDBY)
@@ -601,7 +602,7 @@ class PicoPyServer(TangoServerPrototype):
             log_exception(self, 'Incorrect channels value')
 
     def read_trigger_config(self):
-        return str(self.trigger_config)
+        return str(self.trigger_config_value)
 
     def write_trigger_config(self, value:str):
         self.trigger_config = value
@@ -881,7 +882,7 @@ class PicoPyServer(TangoServerPrototype):
         self.picolog.set_timing(channels_list, points, record_us)
 
     def set_trigger(self):
-        # raed trigger parameters
+        # read trigger parameters
         self.trigger_enabled = self.config.get('trigger_enabled', 0)
         self.trigger_auto = self.config.get('trigger_auto', 0)
         self.trigger_auto_ms = self.config.get('trigger_auto_ms', 0)
