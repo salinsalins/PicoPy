@@ -74,6 +74,12 @@ class PicoPyServer(TangoServerPrototype):
                       unit="V", format="%f",
                       doc="Volts per ADC quantum")
 
+    trigger_config = attribute(label="trigger_config", dtype=str,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="", format="%s",
+                        doc="Trigger configuration")
+
     trigger = attribute(label="trigger", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -457,13 +463,16 @@ class PicoPyServer(TangoServerPrototype):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
+        # timings
         self.points = 1000
         self.record_us = 1000000
+        # trigger
+        self.trigger_config = ''
         self.trigger_enabled = 0
         self.trigger_auto = 0
         self.trigger_auto_ms = 0
         self.trigger_channel = 1
-        self.trigger_dir = 0
+        self.trigger_direction = 0
         self.trigger_threshold = 2048
         self.trigger_hysteresis = 100
         self.trigger_delay = 10.0
@@ -594,6 +603,14 @@ class PicoPyServer(TangoServerPrototype):
             self.channels_list = list_from_str(value)
         self.set_device_property('channels', str(self.channels_list))
         self.picolog.set_timing(self.channels_list, self.points, self.record_us)
+
+    def read_trigger_config(self):
+        return str(self.trigger_config)
+
+    def write_trigger_config(self, value:str):
+        self.trigger_config = value
+        self.set_device_property('trigger_config', str(self.trigger_config))
+        return str(self.trigger_config)
 
     def read_start_time(self):
         return self.picolog.recording_start_time
@@ -856,7 +873,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_channel_properties(name_from_number(i))
             self.set_channel_properties(name_from_number(i, xy='x'),
                                         {'display_unit': 1.0,
-                                         'max_value': self.picolog.times[0, :].max()})
+                                         'max_value': self.picolog.times[-1, -1]})
         self.set_channel_properties(self.raw_data)
         self.raw_data.set_value(self.picolog.data)
 
@@ -873,13 +890,13 @@ class PicoPyServer(TangoServerPrototype):
         self.trigger_auto = self.config.get('trigger_auto', 0)
         self.trigger_auto_ms = self.config.get('trigger_auto_ms', 0)
         self.trigger_channel = self.config.get('trigger_channel', 1)
-        self.trigger_dir = self.config.get('trigger_direction', 0)
+        self.trigger_direction = self.config.get('trigger_direction', 0)
         self.trigger_threshold = self.config.get('trigger_threshold', 2048)
         self.trigger_hysteresis = self.config.get('trigger_hysteresis', 100)
         self.trigger_delay = self.config.get('trigger_delay', 10.0)
         # set trigger
         self.picolog.set_trigger(self.trigger_enabled, self.trigger_channel,
-                                 self.trigger_dir, self.trigger_threshold,
+                                 self.trigger_direction, self.trigger_threshold,
                                  self.trigger_hysteresis, self.trigger_delay,
                                  self.trigger_auto, self.trigger_auto_ms)
 
