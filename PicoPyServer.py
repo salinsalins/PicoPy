@@ -487,10 +487,9 @@ class PicoPyServer(TangoServerPrototype):
             self.picolog = PicoLog1000()
             # change PicoLog1000 logger to class logger
             self.picolog.logger = self.logger
-            self.set_state(DevState.ON)
             # open PicoLog1000 device
             self.picolog.open()
-            self.set_state(DevState.OPEN)
+            self.set_state(DevState.ON)
             self.picolog.get_info()
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
             # set sampling interval channels and number of points
@@ -509,6 +508,8 @@ class PicoPyServer(TangoServerPrototype):
             self.init_result = ex
             log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
+            return False
+        return True
 
     def delete_device(self):
         try:
@@ -740,6 +741,7 @@ class PicoPyServer(TangoServerPrototype):
         return self.read_channel_data(16, xy='x')
 
     def read_raw_data(self):
+        self.logger.debug('State %s', self.get_state())
         if self.data_ready_value:
             self.logger.debug('%s Reading raw_data %s', self.device_name, self.picolog.data.shape)
             self.raw_data.set_quality(AttrQuality.ATTR_VALID)
@@ -748,10 +750,10 @@ class PicoPyServer(TangoServerPrototype):
             self.raw_data.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s Data is not ready' % self.device_name
             self.logger.warning(msg)
-            self.error_stream(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
 
     def read_times(self):
+        self.logger.debug('State %s', self.get_state())
         if self.data_ready_value:
             self.logger.debug('%s Reading times %s', self.device_name, self.picolog.times.shape)
             self.times.set_quality(AttrQuality.ATTR_VALID)
