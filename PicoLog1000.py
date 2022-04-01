@@ -38,13 +38,12 @@ class PicoLog1000:
         self.sampling = 0.0
         self.data = None
         self.times = None
-        self.info = None
         self.timeout = None
         self.overflow = 0
         self.trigger = 0
         self.info = {}
         #
-        self.run_time = 0.0
+        self.recording_start_time = 0.0
         self.read_time = 0.0
         self.t0 = time.time()
         #
@@ -64,7 +63,7 @@ class PicoLog1000:
         self.max_adc = max_count.value
         self.scale = self.range / self.max_adc
         self.opened = True
-        self.logger.debug('Device opened')
+        self.logger.debug('PicoLog: Device has been opened')
 
     def assert_open(self, value=True):
         self.t0 = time.time()
@@ -120,7 +119,6 @@ class PicoLog1000:
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
             cnls[i] = channels[i]
-            #cnls[i] = int(channels[i])
         t_us = ctypes.c_uint32(channel_record_us)
         n = ctypes.c_uint32(channel_points)
         self.last_status = pl1000.pl1000SetInterval(self.handle, ctypes.byref(t_us),
@@ -129,18 +127,23 @@ class PicoLog1000:
         self.channels = channels
         self.points = n.value
         self.record_us = t_us.value
+        if self.points != channel_points:
+            self.logger.warning('PicoLog: number of points corrected from %s to %s us',
+                                channel_points, self.points)
+        if self.record_us != channel_record_us:
+            self.logger.warning('PicoLog: channel record time has been corrected from %s to %s us',
+                                channel_record_us, self.record_us)
         self.sampling = (0.001 * self.record_us) / self.points
-        self.logger.debug('PicoLog timing: %s channels %s; sampling %s ms; %s points; duration %s us',
+        self.logger.debug('PicoLog: Timing: %s channels %s; sampling %s ms; %s points; duration %s us',
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
-        self.data = np.empty((nc, self.points), dtype=np.uint16, order='F')
-        t = np.linspace(0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        self.data = np.empty((len(self.channels), self.points), dtype=np.uint16, order='F')
         self.times = np.empty(self.data.shape, dtype=np.float32)
-        for i in range(nc):
+        # fill timings array
+        t = np.linspace(0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        for i in range(len(self.channels)):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
-        if self.record_us != channel_record_us or self.points != channel_points:
-            self.logger.warning('PicoLog channel record time has been corrected from %s to %s us',
-                                channel_record_us, self.record_us)
+        if self.points != channel_points or self.record_us != channel_record_us:
             return False
         return True
 
@@ -152,48 +155,47 @@ class PicoLog1000:
                 return k
         return "UNKNOWN"
 
-    def run(self, n_values=None, mode="BM_SINGLE", wait=False):
+    def start_recording(self, n_values=None, mode="BM_SINGLE"):
         # start data recording
         self.assert_open()
         if isinstance(mode, str):
-            mode = pl1000.PL1000_BLOCK_METHOD[mode]
+            m = pl1000.PL1000_BLOCK_METHOD[mode]
+        else:
+            m = mode
         if n_values is None:
             n = ctypes.c_uint32(self.points)
         elif not isinstance(n_values, ctypes.c_uint32):
             n = ctypes.c_uint32(n_values)
         else:
             n = n_values
-        self.last_status = pl1000.pl1000Run(self.handle, n, mode)
+        self.last_status = pl1000.pl1000Run(self.handle, n, m)
         assert_pico_ok(self.last_status)
-        self.run_time = time.time()
-        if wait:
-            self.ready(True)
+        self.recording_start_time = time.time()
 
-    def ready(self, wait=False, timeout=None):
+    def ready(self):
         self.assert_open()
-        t0 = time.time()
         ready = ctypes.c_int16(0)
         self.last_status = pl1000.pl1000Ready(self.handle, ctypes.byref(ready))
-        if wait:
-            if self.timeout is not None and timeout is None:
-                timeout = self.timeout
-            while not ready.value:
-                if timeout is not None and time.time() - t0 > timeout:
-                    break
-                self.last_status = pl1000.pl1000Ready(self.handle, ctypes.byref(ready))
-            assert_pico_ok(self.last_status)
         assert_pico_ok(self.last_status)
         return ready.value
 
     def wait_result(self, timeout=None):
-        return self.ready(True, timeout)
+        if timeout is None:
+            timeout = self.timeout
+        if timeout is None:
+            return self.ready()
+        t0 = time.time()
+        while not self.ready():
+            if (time.time() - t0) > timeout:
+                return False
+        return self.ready()
 
-    def read(self, wait=False):
+    def read(self, wait=0.0):
         self.assert_open()
-        if wait:
-            self.ready(True)
+        if wait > 0.0:
+            self.wait_result(wait)
         if not self.ready():
-            self.logger.warning('Read on not ready device')
+            self.logger.warning('PicoLog: read - device is not ready')
         overflow = ctypes.c_uint16()
         trigger = ctypes.c_uint32()
         n = ctypes.c_uint32(self.points)
@@ -204,7 +206,7 @@ class PicoLog1000:
         self.overflow = overflow.value
         self.trigger = trigger.value
         if self.points != n.value:
-            self.logger.warning('Data partial reading %s of %', n.value, self.points)
+            self.logger.warning('PicoLog: data partial reading %s of %s', n.value, self.points)
 
     def close(self):
         self.last_status = pl1000.pl1000CloseUnit(self.handle)
@@ -280,13 +282,14 @@ class PicoLog1000:
 if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
-    pl.set_timing([3, 1, 3, 1], 10000, 200000)
-    #pl.set_timing([i+1 for i in range(16)], 10, 20000)
+    pl.set_timing([1, 2, 3, 4], 10000, 200000)
     pl.set_trigger(0, 1, 0, 1024, -50.0)
-    pl.run()
-    pl.wait_result()
+    t0 = time.time()
+    pl.start_recording()
+    pl.wait_result(5.0)
     pl.read()
     pl.close()
+    print('Reading completed in', time.time() - t0, 'seconds')
 
     import matplotlib.pyplot as plt
 
