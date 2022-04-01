@@ -463,9 +463,6 @@ class PicoPyServer(TangoServerPrototype):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
-        # timings
-        self.points = 1000
-        self.record_us = 1000000
         # trigger
         self.trigger_config = ''
         self.trigger_enabled = 0
@@ -582,23 +579,25 @@ class PicoPyServer(TangoServerPrototype):
         return self.picolog.record_us
 
     def read_points_per_channel(self):
-        return self.points
+        return self.picolog.points
 
     def write_points_per_channel(self, value):
         self.config['points_per_channel'] = str(value)
         self.set_sampling()
-        return self.points
+        return self.picolog.points
 
     def read_channels(self):
-        return str(self.channels_list)
+        return str(self.picolog.channels)
 
     def write_channels(self, value):
+        last = self.config.get('channels', '[1]')
         try:
-            self.channels_list = list_from_str(str(value))
-            self.config['channels'] = str(self.channels_list)
+            channels_list = list_from_str(str(value))
+            self.config['channels'] = str(channels_list)
             self.set_sampling()
-            self.set_device_property('channels', str(self.channels_list))
+            self.set_device_property('channels', str(channels_list))
         except:
+            self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
 
     def read_trigger_config(self):
@@ -622,7 +621,7 @@ class PicoPyServer(TangoServerPrototype):
             self.logger.info(msg)
             return empty_array(xy)
         channel_attribute = getattr(self, channel_name)
-        if channel not in self.channels_list:
+        if channel not in self.picolog.channels:
             channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s Channel %s is not set for measurements' % (self.device_name, channel_name)
             self.logger.info(msg)
@@ -633,13 +632,14 @@ class PicoPyServer(TangoServerPrototype):
             self.logger.info(msg)
             self.error_stream(msg)
             return empty_array(xy)
-        channel_index = self.channels_list.index(channel)
-        self.logger.debug('%s Reading %s: %s', self.device_name, channel_name, self.picolog.data[0, :].shape)
-        channel_attribute.set_quality(AttrQuality.ATTR_VALID)
+        channel_index = self.picolog.channels.index(channel)
         if xy == 'y':
-            return self.picolog.data[channel_index, :]
+            data = self.picolog.data[channel_index, :]
         else:
-            return self.picolog.times[channel_index, :]
+            data = self.picolog.times[channel_index, :]
+        self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
+        channel_attribute.set_quality(AttrQuality.ATTR_VALID)
+        return data
 
     # read channel helper functions
     def read_chany01(self):
@@ -875,11 +875,10 @@ class PicoPyServer(TangoServerPrototype):
         self.raw_data.set_value(self.picolog.data)
 
     def set_sampling(self):
-        value = self.config.get('channels', '[1]')
-        self.channels_list = list_from_str(value)
-        self.points = self.config.get('points_per_channel', 1000)
-        self.record_us = self.config.get('channel_record_time_us', 1000000)
-        self.picolog.set_timing(self.channels_list, self.points, self.record_us)
+        channels_list = list_from_str(self.config.get('channels', '[1]'))
+        points = self.config.get('points_per_channel', 1000)
+        record_us = self.config.get('channel_record_time_us', 1000000)
+        self.picolog.set_timing(channels_list, points, record_us)
 
     def set_trigger(self):
         # raed trigger parameters
