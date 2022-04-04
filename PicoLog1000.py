@@ -113,6 +113,22 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000SetPulseWidth(self.handle, ctypes.c_int16(period), ctypes.c_int8(cycle))
         assert_pico_ok(self.last_status)
 
+    # class Timings:
+    #     def __init__(self, parent):
+    #         self.parent = parent
+    #
+    #     def __len__(self):
+    #         return len(self.parent.data)
+    #
+    #     def __getitem__(self, key):
+    #         key1 = list(key)
+    #         if key[0] < 0:
+    #             key1[0] = self.parent.data.shape[0] + key[0]
+    #         if key[1] < 0:
+    #             key1[1] = self.parent.data.shape[1] + key[1]
+    #         return np.float32(self.parent.sampling * (key1[0] + (key1[1] / len(self.parent.channels))))
+    #
+
     def set_timing(self, channels, channel_points, channel_record_us):
         self.assert_open()
         nc = len(channels)
@@ -138,11 +154,13 @@ class PicoLog1000:
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
         self.data = np.empty((len(self.channels), self.points), dtype=np.uint16, order='F')
+        # and timings
         self.times = np.empty(self.data.shape, dtype=np.float32)
         # fill timings array
         t = np.linspace(0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
         for i in range(len(self.channels)):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
+        # self.times = self.Timings(self)
         if self.points != channel_points or self.record_us != channel_record_us:
             return False
         return True
@@ -150,10 +168,7 @@ class PicoLog1000:
     def get_last_status(self, stat=None):
         if stat is None:
             stat = self.last_status
-        for k in PICO_STATUS:
-            if PICO_STATUS[k] == stat:
-                return k
-        return "UNKNOWN"
+        return PICO_STATUS.get(stat, "UNKNOWN")
 
     def start_recording(self, n_values=None, mode="BM_SINGLE"):
         # start data recording
