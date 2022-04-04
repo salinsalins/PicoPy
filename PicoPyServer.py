@@ -43,6 +43,7 @@ def empty_array(xy='y'):
 def name_from_number(n: int, xy='y'):
     return 'chan%s%02i' % (xy, n)
 
+
 MAX_DATA_ARRAY_SIZE = 1000000
 MAX_ADC_VALUE = 4095
 MAX_ADC_CHANNELS = 16
@@ -70,7 +71,7 @@ class PicoPyServer(TangoServerPrototype):
                      display_level=DispLevel.OPERATOR,
                      access=AttrWriteType.READ,
                      unit="s", format="%f",
-                     doc="Ping time")
+                     doc="PicoLog Ping time in seconds")
 
     scale = attribute(label="scale", dtype=float,
                       display_level=DispLevel.OPERATOR,
@@ -94,7 +95,7 @@ class PicoPyServer(TangoServerPrototype):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="ms", format="%f",
-                         doc="Sampling in milliseconds between points in each channel")
+                         doc="Sampling in milliseconds - Time between points")
 
     record_in_progress = attribute(label="record_in_progress", dtype=bool,
                                    display_level=DispLevel.OPERATOR,
@@ -127,19 +128,19 @@ class PicoPyServer(TangoServerPrototype):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ_WRITE,
                          unit="", format="%s",
-                         doc='Channels list "[1, 2, 5]"')
+                         doc='Channels list - json format string like "[1, 2, 5]"')
 
     start_time = attribute(label="start_time", dtype=float,
                            display_level=DispLevel.OPERATOR,
                            access=AttrWriteType.READ,
                            unit="s", format="%f",
-                           doc="Recording start time")
+                           doc="Recording start time - UNIX seconds")
 
     stop_time = attribute(label="stop_time", dtype=float,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ,
                           unit="s", format="%f",
-                          doc="Recording stop time")
+                          doc="Recording stop time - UNIX seconds")
     # !!!!!!!!!!!!!!!!!!!!!
     # Channel numbering starts from 1 !!! (according manufacturer manuals and API)
     # !!!!!!!!!!!!!!!!!!!!!
@@ -607,7 +608,7 @@ class PicoPyServer(TangoServerPrototype):
     def read_stop_time(self):
         return self.picolog.read_time
 
-    def read_channel_data(self, channel:int, xy:str ='y'):
+    def read_channel_data(self, channel: int, xy: str = 'y'):
         channel_name = name_from_number(channel, xy)
         if not hasattr(self, channel_name):
             msg = '%s Read for unknown channel %s' % (self.device_name, channel_name)
