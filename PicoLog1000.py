@@ -113,23 +113,6 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000SetPulseWidth(self.handle, ctypes.c_int16(period), ctypes.c_int8(cycle))
         assert_pico_ok(self.last_status)
 
-    class Timings:
-        def __init__(self, parent):
-            self.parent = parent
-
-        def __len__(self):
-            return len(self.parent.data)
-
-        def __getitem__(self, key):
-            key1 = list(key)
-            if isinstance(key[0], int) and key[0] < 0:
-                key1[0] = self.parent.data.shape[0] + key[0]
-            # elif isinstance(key, slice):
-            #     return self.getslice(key)
-            if isinstance(key[1], int) and key[1] < 0:
-                key1[1] = self.parent.data.shape[1] + key[1]
-            return np.float32(self.parent.sampling * (key1[0] + (key1[1] / len(self.parent.channels))))
-
 
     def set_timing(self, channels, channel_points, channel_record_us):
         self.assert_open()
@@ -159,10 +142,9 @@ class PicoLog1000:
         # and timings
         self.times = np.empty(self.data.shape, dtype=np.float32)
         # fill timings array
-        t = np.linspace(0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        t = np.linspace(0.0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
         for i in range(len(self.channels)):
             self.times[i, :] = t + (i * self.sampling / len(self.channels))
-        # self.times = self.Timings(self)
         if self.points != channel_points or self.record_us != channel_record_us:
             return False
         return True
