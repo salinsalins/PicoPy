@@ -616,7 +616,7 @@ class PicoPyServer(TangoServerPrototype):
     def read_stop_time(self):
         return self.picolog.read_time
 
-    def read_channel_data(self, channel: int, xy='y'):
+    def read_channel_data(self, channel:int, xy:str ='y'):
         channel_name = name_from_number(channel, xy)
         if not hasattr(self, channel_name):
             msg = '%s Read for unknown channel %s' % (self.device_name, channel_name)
@@ -635,10 +635,10 @@ class PicoPyServer(TangoServerPrototype):
             self.error_stream(msg)
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
-        if xy == 'y':
-            data = self.picolog.data[channel_index, :]
-        else:
+        if 'x' == xy[0].lower():
             data = self.picolog.times[channel_index, :]
+        else:
+            data = self.picolog.data[channel_index, :]
         self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
         channel_attribute.set_quality(AttrQuality.ATTR_VALID)
         return data
@@ -772,7 +772,7 @@ class PicoPyServer(TangoServerPrototype):
         else:
             return 'Attribute not found'
 
-    @command(dtype_in=int)
+    @command(dtype_in=int, dtype_out=bool)
     def _start(self, value):
         try:
             if value > 0:
@@ -780,13 +780,13 @@ class PicoPyServer(TangoServerPrototype):
                     msg = '%s Can not start - record in progress' % self.device_name
                     self.logger.info(msg)
                     self.info_stream(msg)
-                    return
+                    return False
             if value > 1:
                 if not self.picolog.ready():
                     msg = '%s Can not start - device not ready' % self.device_name
                     self.logger.info(msg)
                     self.info_stream(msg)
-                    return
+                    return False
             self.picolog.start_recording()
             self.start_time_value = time.time()
             self.record_initiated = True
@@ -795,6 +795,7 @@ class PicoPyServer(TangoServerPrototype):
             msg = '%s Recording started' % self.device_name
             self.logger.info(msg)
             self.info_stream(msg)
+            return True
         except:
             self.record_initiated = False
             self.data_ready_value = False
@@ -803,6 +804,7 @@ class PicoPyServer(TangoServerPrototype):
             self.logger.warning(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
+            return False
 
     @command(dtype_in=None)
     def start_recording(self):
@@ -882,6 +884,7 @@ class PicoPyServer(TangoServerPrototype):
         points = self.config.get('points_per_channel', 1000)
         record_us = self.config.get('channel_record_time_us', 1000000)
         self.picolog.set_timing(channels_list, points, record_us)
+        self.data_ready_value = False
 
     def set_trigger(self):
         # read trigger parameters

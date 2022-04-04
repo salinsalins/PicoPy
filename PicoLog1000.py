@@ -140,11 +140,11 @@ class PicoLog1000:
         # create array for data
         self.data = np.empty((len(self.channels), self.points), dtype=np.uint16, order='F')
         # and timings
-        self.times = np.empty(self.data.shape, dtype=np.float32)
         # fill timings array
-        t = np.linspace(0.0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        self.t = np.linspace(0.0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        self.times = np.empty(self.data.shape, dtype=np.float32)
         for i in range(len(self.channels)):
-            self.times[i, :] = t + (i * self.sampling / len(self.channels))
+            self.times[i, :] = self.t + (i * self.sampling / len(self.channels))
         if self.points != channel_points or self.record_us != channel_record_us:
             return False
         return True
