@@ -43,9 +43,13 @@ def empty_array(xy='y'):
 def name_from_number(n: int, xy='y'):
     return 'chan%s%02i' % (xy, n)
 
+MAX_DATA_ARRAY_SIZE = 1000000
+MAX_ADC_VALUE = 4095
+MAX_ADC_CHANNELS = 16
+
 
 class PicoPyServer(TangoServerPrototype):
-    server_version = '2.1'
+    server_version = '2.2'
     server_name = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -73,12 +77,6 @@ class PicoPyServer(TangoServerPrototype):
                       access=AttrWriteType.READ,
                       unit="V", format="%f",
                       doc="Volts per ADC quantum")
-
-    trigger_config = attribute(label="trigger_config", dtype=str,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="", format="%s",
-                        doc="Trigger configuration")
 
     trigger = attribute(label="trigger", dtype=float,
                         display_level=DispLevel.OPERATOR,
@@ -119,7 +117,7 @@ class PicoPyServer(TangoServerPrototype):
 
     points_per_channel = attribute(label="points_per_channel", dtype=int,
                                    min_value=0,
-                                   max_value=1000000,
+                                   max_value=MAX_DATA_ARRAY_SIZE,
                                    display_level=DispLevel.OPERATOR,
                                    access=AttrWriteType.READ_WRITE,
                                    unit="", format="%7d",
@@ -148,8 +146,8 @@ class PicoPyServer(TangoServerPrototype):
     # channels for recorded ADC samples
     chany01 = attribute(label="Channel_01", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -158,8 +156,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany02 = attribute(label="Channel_02", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -168,8 +166,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany03 = attribute(label="Channel_03", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -178,8 +176,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany04 = attribute(label="Channel_04", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -188,8 +186,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany05 = attribute(label="Channel_05", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -198,8 +196,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany06 = attribute(label="Channel_06", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -208,8 +206,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany07 = attribute(label="Channel_07", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -218,8 +216,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany08 = attribute(label="Channel_08", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -228,8 +226,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany09 = attribute(label="Channel_09", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -238,8 +236,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany10 = attribute(label="Channel_10", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -248,8 +246,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany11 = attribute(label="Channel_11", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -258,8 +256,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany12 = attribute(label="Channel_12", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -268,8 +266,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany13 = attribute(label="Channel_13", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -278,8 +276,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany14 = attribute(label="Channel_14", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -288,8 +286,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany15 = attribute(label="Channel_15", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -298,8 +296,8 @@ class PicoPyServer(TangoServerPrototype):
 
     chany16 = attribute(label="Channel_16", dtype=[numpy.uint16],
                         min_value=0,
-                        max_value=4095,
-                        max_dim_x=1000000,
+                        max_value=MAX_ADC_VALUE,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -309,7 +307,7 @@ class PicoPyServer(TangoServerPrototype):
     # channels for ADC times 32 bit floats in ms
     chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -317,7 +315,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 01 counts. 32 bit floats in ms")
     chanx02 = attribute(label="Channel_02_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -325,7 +323,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 02 counts. 32 bit floats in ms")
     chanx03 = attribute(label="Channel_03_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -333,7 +331,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 03 counts. 32 bit floats in ms")
     chanx04 = attribute(label="Channel_04_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -341,7 +339,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 04 counts. 32 bit floats in ms")
     chanx05 = attribute(label="Channel_05_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -349,7 +347,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 05 counts. 32 bit floats in ms")
     chanx06 = attribute(label="Channel_06_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -357,7 +355,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 06 counts. 32 bit floats in ms")
     chanx07 = attribute(label="Channel_07_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -365,7 +363,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 07 counts. 32 bit floats in ms")
     chanx08 = attribute(label="Channel_08_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -373,7 +371,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 08 counts. 32 bit floats in ms")
     chanx09 = attribute(label="Channel_09_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -381,7 +379,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 09 counts. 32 bit floats in ms")
     chanx10 = attribute(label="Channel_10_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -389,7 +387,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 10 counts. 32 bit floats in ms")
     chanx11 = attribute(label="Channel_11_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -397,7 +395,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 11 counts. 32 bit floats in ms")
     chanx12 = attribute(label="Channel_12_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -405,7 +403,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 12 counts. 32 bit floats in ms")
     chanx13 = attribute(label="Channel_13_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -413,7 +411,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 13 counts. 32 bit floats in ms")
     chanx14 = attribute(label="Channel_14_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -421,7 +419,7 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 14 counts. 32 bit floats in ms")
     chanx15 = attribute(label="Channel_15_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -429,26 +427,27 @@ class PicoPyServer(TangoServerPrototype):
                         doc="Times for channel 15 counts. 32 bit floats in ms")
     chanx16 = attribute(label="Channel_16_times", dtype=[numpy.float32],
                         min_value=0.0,
-                        max_dim_x=1000000,
+                        max_dim_x=MAX_DATA_ARRAY_SIZE,
                         max_dim_y=0,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="ms", format="%5.3f",
                         doc="Times for channel 16 counts. 32 bit floats in ms")
+
     # raw data for all channels
     raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
-                         max_dim_y=16,
-                         max_dim_x=1000000,
+                         max_dim_y=MAX_ADC_CHANNELS,
+                         max_dim_x=MAX_DATA_ARRAY_SIZE,
                          min_value=0,
-                         max_value=4095,
+                         max_value=MAX_ADC_VALUE,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
-                         doc="Raw data from ADC for all channels. 16 bit integers, converted to Volts by display_units")
+                         doc="Raw data from ADC for all channels. MAX_ADC_CHANNELS bit integers, converted to Volts by display_units")
     # timings for all  channels 32 bit floats in ms
     times = attribute(label="times", dtype=[[numpy.float32]],
-                      max_dim_y=16,
-                      max_dim_x=1000000,
+                      max_dim_y=MAX_ADC_CHANNELS,
+                      max_dim_x=MAX_DATA_ARRAY_SIZE,
                       min_value=0.0,
                       display_level=DispLevel.OPERATOR,
                       access=AttrWriteType.READ,
@@ -601,14 +600,6 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
-
-    def read_trigger_config(self):
-        return str(self.trigger_config_value)
-
-    def write_trigger_config(self, value:str):
-        self.trigger_config = value
-        self.set_device_property('trigger_config', str(self.trigger_config))
-        return str(self.trigger_config)
 
     def read_start_time(self):
         return self.picolog.recording_start_time
@@ -882,7 +873,7 @@ class PicoPyServer(TangoServerPrototype):
     def set_sampling(self):
         channels_list = list_from_str(self.config.get('channels', '[1]'))
         points = self.config.get('points_per_channel', 1000)
-        record_us = self.config.get('channel_record_time_us', 1000000)
+        record_us = self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE)
         self.picolog.set_timing(channels_list, points, record_us)
         self.data_ready_value = False
 
