@@ -5,7 +5,7 @@
 PicoLog1000 series tango device server
 
 """
-
+import logging
 import time
 import sys
 import numpy
@@ -50,7 +50,7 @@ MAX_ADC_CHANNELS = 16
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version = '2.2'
+    server_version = '2.3'
     server_name = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -444,7 +444,7 @@ class PicoPyServer(TangoServerPrototype):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
-                         doc="Raw data from ADC for all channels. MAX_ADC_CHANNELS bit integers, converted to Volts by display_units")
+                         doc="Raw data from ADC for all channels. 16 bit integers, converted to Volts by display_units")
     # timings for all  channels 32 bit floats in ms
     times = attribute(label="times", dtype=[[numpy.float32]],
                       max_dim_y=MAX_ADC_CHANNELS,
@@ -492,9 +492,9 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.ON)
             self.picolog.get_info()
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
-            # set sampling interval channels and number of points
+            # set channels for measurements, sampling interval, number of points for channel, creates data arrays
             self.set_sampling()
-            # set properties for channels:
+            # set additional properties for channels:
             self.configure_channels()
             # set trigger
             self.set_trigger()
@@ -584,9 +584,13 @@ class PicoPyServer(TangoServerPrototype):
         return self.picolog.points
 
     def write_points_per_channel(self, value):
-        self.config['points_per_channel'] = str(value)
-        self.set_sampling()
-        return self.picolog.points
+        last = self.config.get('points_per_channel', 1000)
+        try:
+            self.config['points_per_channel'] = int(value)
+            self.set_sampling()
+        except:
+            self.config['points_per_channel'] = last
+            log_exception(self, 'Incorrect points_per_channel')
 
     def read_channels(self):
         return str(self.picolog.channels)
@@ -597,7 +601,6 @@ class PicoPyServer(TangoServerPrototype):
             channels_list = list_from_str(str(value))
             self.config['channels'] = str(channels_list)
             self.set_sampling()
-            self.set_device_property('channels', str(channels_list))
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
@@ -733,7 +736,6 @@ class PicoPyServer(TangoServerPrototype):
         return self.read_channel_data(16, xy='x')
 
     def read_raw_data(self):
-        self.logger.debug('State %s', self.get_state())
         if self.data_ready_value:
             self.logger.debug('%s Reading raw_data %s', self.device_name, self.picolog.data.shape)
             self.raw_data.set_quality(AttrQuality.ATTR_VALID)
@@ -745,7 +747,6 @@ class PicoPyServer(TangoServerPrototype):
             return numpy.zeros(0, dtype=numpy.uint16)
 
     def read_times(self):
-        self.logger.debug('State %s', self.get_state())
         if self.data_ready_value:
             self.logger.debug('%s Reading times %s', self.device_name, self.picolog.times.shape)
             self.times.set_quality(AttrQuality.ATTR_VALID)
@@ -763,6 +764,14 @@ class PicoPyServer(TangoServerPrototype):
             return str(getattr(self.picolog, name))
         else:
             return 'Attribute not found'
+
+    @command(dtype_in=None, dtype_out=bool)
+    def ready(self):
+        try:
+            return self.picolog.ready()
+        except:
+            log_exception('%s Readiness query error', self.device_name, level=logging.WARNING)
+            return False
 
     @command(dtype_in=int, dtype_out=bool)
     def _start(self, value):
@@ -801,14 +810,14 @@ class PicoPyServer(TangoServerPrototype):
     @command(dtype_in=None)
     def start_recording(self):
         self.stop_recording()
-        self._read_config()
+        self.set_sampling()
+        self.set_trigger()
         self._start(0)
 
     @command(dtype_in=None)
-    def _read_config(self):
+    def _apply_config(self):
         self.stop_recording()
         self.set_sampling()
-        # set trigger
         self.set_trigger()
         self.record_initiated = False
         self.data_ready_value = False
@@ -824,17 +833,12 @@ class PicoPyServer(TangoServerPrototype):
             self.record_initiated = False
             self.data_ready_value = False
             self.set_state(DevState.STANDBY)
-            msg = '%s Recording stopped' % self.device_name
-            self.logger.info(msg)
-            self.info_stream(msg)
+            self.logger.info('%s Recording stopped' % self.device_name)
         except:
             self.record_initiated = False
             self.data_ready_value = False
             self.set_state(DevState.FAULT)
-            msg = '%s Recording stop error' % self.device_name
-            self.logger.warning(msg)
-            self.error_stream(msg)
-            self.logger.debug('', exc_info=True)
+            log_exception('%s Recording stop error' % self.device_name, level=logging.WARNING)
 
     def assert_proxy(self):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
@@ -873,10 +877,14 @@ class PicoPyServer(TangoServerPrototype):
 
     def set_sampling(self):
         channels_list = list_from_str(self.config.get('channels', '[1]'))
-        points = self.config.get('points_per_channel', 1000)
-        record_us = self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE)
+        points = int(self.config.get('points_per_channel', 1000))
+        record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
         self.picolog.set_timing(channels_list, points, record_us)
         self.data_ready_value = False
+        self.config['points_per_channel'] = self.picolog.points
+        self.set_device_property('points_per_channel', str(self.config['points_per_channel']))
+        self.config['channel_record_time_us'] = self.picolog.record_us
+        self.set_device_property('channel_record_time_us', str(self.config['channel_record_time_us']))
 
     def set_trigger(self):
         # read trigger parameters
