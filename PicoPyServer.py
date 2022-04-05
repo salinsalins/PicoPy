@@ -464,7 +464,6 @@ class PicoPyServer(TangoServerPrototype):
         self.data_ready_value = False
         self.init_result = None
         # trigger
-        self.trigger_config_value = {}
         self.trigger_enabled = 0
         self.trigger_auto = 0
         self.trigger_auto_ms = 0
@@ -477,12 +476,13 @@ class PicoPyServer(TangoServerPrototype):
         super().init_device()
         if self not in PicoPyServer.device_list:
             PicoPyServer.device_list.append(self)
+        self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
 
     def set_config(self):
         super().set_config()
         try:
-            self.set_state(DevState.INIT)
             self.device_name = self.get_name()
+            self.set_state(DevState.INIT)
             # create PicoLog1000 device
             self.picolog = PicoLog1000()
             # change PicoLog1000 logger to class logger
@@ -492,15 +492,8 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.ON)
             self.picolog.get_info()
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
-            # set channels for measurements, sampling interval, number of points for channel, creates data arrays
-            self.set_sampling()
-            # set additional properties for channels:
-            self.configure_channels()
-            # set trigger
-            self.set_trigger()
+            self.apply_config()
             self.init_result = None
-            self.trigger_config_value = json.loads(self.config.get('trigger_config', '{"enabled": false}'))
-            # OK message
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
             self.logger.info(msg)
             self.set_state(DevState.STANDBY)
@@ -627,7 +620,7 @@ class PicoPyServer(TangoServerPrototype):
             msg = '%s Channel %s is not set for measurements' % (self.device_name, channel_name)
             self.logger.info(msg)
             return empty_array(xy)
-        if not self.data_ready_value:
+        if not self.read_data_ready():
             channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s Data is not ready for %s' % (self.device_name, channel_name)
             self.logger.info(msg)
@@ -767,23 +760,21 @@ class PicoPyServer(TangoServerPrototype):
         try:
             return self.picolog.ready()
         except:
-            log_exception('%s Readiness query error', self.device_name, level=logging.WARNING)
+            log_exception(self, '%s Readiness query error', self.device_name, level=logging.WARNING)
             return False
 
     @command(dtype_in=int, dtype_out=bool)
-    def _start(self, value):
+    def _start(self, value=0):
         try:
             if value > 0:
                 if self.record_initiated:
                     msg = '%s Can not start - record in progress' % self.device_name
                     self.logger.info(msg)
-                    self.info_stream(msg)
                     return False
             if value > 1:
                 if not self.picolog.ready():
                     msg = '%s Can not start - device not ready' % self.device_name
                     self.logger.info(msg)
-                    self.info_stream(msg)
                     return False
             self.picolog.start_recording()
             self.start_time_value = time.time()
@@ -798,30 +789,22 @@ class PicoPyServer(TangoServerPrototype):
             self.record_initiated = False
             self.data_ready_value = False
             self.set_state(DevState.FAULT)
-            msg = '%s Recording start error' % self.device_name
-            self.logger.warning(msg)
-            self.error_stream(msg)
-            self.logger.debug('', exc_info=True)
+            log_exception(self, '%s Recording start error' % self.device_name, level=logging.WARNING)
             return False
 
     @command(dtype_in=None)
     def start_recording(self):
         self.stop_recording()
-        self.set_sampling()
-        self.set_trigger()
-        self._start(0)
+        self._start()
 
     @command(dtype_in=None)
-    def _apply_config(self):
-        self.stop_recording()
+    def apply_config(self):
+        # set channels for measurements, sampling interval, number of points for channel, creates data arrays
         self.set_sampling()
+        # set additional properties for channels:
+        self.configure_channels()
+        # set trigger
         self.set_trigger()
-        self.record_initiated = False
-        self.data_ready_value = False
-        self.set_state(DevState.STANDBY)
-        msg = '%s New config applied' % self.device_name
-        self.logger.debug(msg)
-        self.debug_stream(msg)
 
     @command(dtype_in=None)
     def stop_recording(self):
@@ -837,7 +820,7 @@ class PicoPyServer(TangoServerPrototype):
                 self.record_initiated = False
                 self.data_ready_value = False
             self.set_state(DevState.FAULT)
-            log_exception('%s Recording stop error' % self.device_name, level=logging.WARNING)
+            log_exception(self, '%s Recording stop error' % self.device_name, level=logging.WARNING)
 
     def assert_proxy(self):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
@@ -872,7 +855,10 @@ class PicoPyServer(TangoServerPrototype):
                                         {'display_unit': 1.0,
                                          'max_value': self.picolog.times[-1, -1]})
         self.set_channel_properties(self.raw_data)
-        self.raw_data.set_value(self.picolog.data)
+        self.channel_record_time_us.set_write_value(self.config['channel_record_time_us'])
+        self.points_per_channel.set_write_value(self.config['points_per_channel'])
+        self.channels.set_write_value(self.config['channels'])
+        self.record_in_progress.set_write_value(self.record_initiated)
 
     def set_sampling(self):
         channels_list = list_from_str(self.config.get('channels', '[1]'))
@@ -901,6 +887,20 @@ class PicoPyServer(TangoServerPrototype):
                                  self.trigger_hysteresis, self.trigger_delay,
                                  self.trigger_auto, self.trigger_auto_ms)
 
+    def read(self):
+        if not self.record_initiated:
+            return False
+        try:
+            if self.picolog.ready():
+                self.picolog.read()
+                self.record_initiated = False
+                self.data_ready_value = True
+                self.logger.info('%s Data hes been red' % self.device_name)
+        except:
+            self.record_initiated = False
+            self.data_ready_value = False
+            log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
+
 
 def looping():
     time.sleep(0.001)
@@ -909,12 +909,9 @@ def looping():
             try:
                 if dev.picolog.ready():
                     dev.stop_time_value = time.time()
-                    dev.picolog.read()
-                    dev.record_initiated = False
-                    dev.data_ready_value = True
                     msg = '%s Recording finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
-                    dev.info_stream(msg)
+                    dev.read()
             except:
                 dev.record_initiated = False
                 dev.data_ready_value = False

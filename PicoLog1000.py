@@ -65,18 +65,24 @@ class PicoLog1000:
         self.opened = True
         self.logger.debug('PicoLog: Device has been opened')
 
-    def assert_open(self, value=True):
+    def assert_open(self):
         self.t0 = time.time()
-        if not self.opened:
+        if self.handle is None or not self.opened:
             raise ClosedDeviceError("PicoLog is not opened")
-        if not value:
-            raise ArgumentOutOfRangeError("Value out of range")
+        # !!!!
+        # pl1000.pl1000SetInterval does not return correct status if Picolog is disconnected
+        # self.ping() return -1.0 and correct status 'PICO_NOT_RESPONDING'
+        # !!!!
+        if self.ping() < 0.0:
+            assert_pico_ok(self.last_status)
+        # !!!!
         # handle = ctypes.c_int16()
         # progress = ctypes.c_int16()
         # complete = ctypes.c_int16()
         # stat = pl.pl1000OpenUnitProgress(ctypes.byref(handle), ctypes.byref(progress), ctypes.byref(complete))
         # assert_pico_ok(stat)
         # print('progress', handle, progress.value, complete.value)
+        return True
 
     def get_info(self, request=None):
         self.assert_open()
@@ -112,7 +118,6 @@ class PicoLog1000:
         self.assert_open()
         self.last_status = pl1000.pl1000SetPulseWidth(self.handle, ctypes.c_int16(period), ctypes.c_int8(cycle))
         assert_pico_ok(self.last_status)
-
 
     def set_timing(self, channels, channel_points, channel_record_us):
         self.assert_open()
@@ -190,7 +195,6 @@ class PicoLog1000:
         return self.ready()
 
     def read(self, wait=0.0):
-        self.assert_open()
         if wait > 0.0:
             self.wait_result(wait)
         if not self.ready():
@@ -237,6 +241,7 @@ class PicoLog1000:
             return time.time() - t0
         else:
             return -1.0
+
 
 #
 # class FakePicoLog1000(PicoLog1000):
