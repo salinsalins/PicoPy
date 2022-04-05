@@ -576,9 +576,13 @@ class PicoPyServer(TangoServerPrototype):
         return self.picolog.record_us
 
     def write_channel_record_time_us(self, value):
-        self.config['channel_record_time_us'] = str(value)
-        self.set_sampling()
-        return self.picolog.record_us
+        last = self.config.get('channel_record_time_us', 1000000)
+        try:
+            self.config['channel_record_time_us'] = int(value)
+            self.set_sampling()
+        except:
+            self.config['channel_record_time_us'] = last
+            log_exception(self, 'Incorrect channel_record_time_us')
 
     def read_points_per_channel(self):
         return self.picolog.points
@@ -758,13 +762,6 @@ class PicoPyServer(TangoServerPrototype):
             self.error_stream(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
 
-    @command(dtype_in=str, dtype_out=str)
-    def _read_picolog_attribute(self, name):
-        if hasattr(self.picolog, name):
-            return str(getattr(self.picolog, name))
-        else:
-            return 'Attribute not found'
-
     @command(dtype_in=None, dtype_out=bool)
     def ready(self):
         try:
@@ -830,13 +827,15 @@ class PicoPyServer(TangoServerPrototype):
     def stop_recording(self):
         try:
             self.picolog.stop()
-            self.record_initiated = False
-            self.data_ready_value = False
+            if self.record_initiated:
+                self.record_initiated = False
+                self.data_ready_value = False
             self.set_state(DevState.STANDBY)
-            self.logger.info('%s Recording stopped' % self.device_name)
+            self.logger.info('%s Recording has been stopped' % self.device_name)
         except:
-            self.record_initiated = False
-            self.data_ready_value = False
+            if self.record_initiated:
+                self.record_initiated = False
+                self.data_ready_value = False
             self.set_state(DevState.FAULT)
             log_exception('%s Recording stop error' % self.device_name, level=logging.WARNING)
 
