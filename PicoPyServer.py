@@ -50,7 +50,7 @@ MAX_ADC_CHANNELS = 16
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version = '2.4'
+    server_version = '2.5'
     server_name = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -772,7 +772,6 @@ class PicoPyServer(TangoServerPrototype):
                     self.logger.info(msg)
                     return False
             self.picolog.start_recording()
-            self.start_time_value = time.time()
             self.record_initiated = True
             self.data_ready_value = False
             self.set_state(DevState.RUNNING)
@@ -899,20 +898,15 @@ class PicoPyServer(TangoServerPrototype):
 def looping():
     time.sleep(0.001)
     for dev in PicoPyServer.device_list:
+        time.sleep(0.001)
         if dev.record_initiated:
             try:
                 if dev.picolog.ready():
-                    dev.stop_time_value = time.time()
+                    dev.read()
                     msg = '%s Recording finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
-                    dev.read()
             except:
-                dev.record_initiated = False
-                dev.data_ready_value = False
-                msg = '%s Reading data error' % dev.device_name
-                dev.logger.warning(msg)
-                dev.error_stream(msg)
-                dev.logger.debug('', exc_info=True)
+                log_exception('%s Reading data error' % dev.device_name, level=logging.WARNING)
     # PicoPyServer.logger.debug('loop end')
 
 
