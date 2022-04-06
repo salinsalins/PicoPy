@@ -463,6 +463,9 @@ class PicoPyServer(TangoServerPrototype):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
+        self.auto_reconnect = False
+        self.auto_reconnect_timeout = 0.0
+        self.auto_reconnect_count = 3
         # trigger
         self.trigger_enabled = 0
         self.trigger_auto = 0
@@ -894,6 +897,9 @@ class PicoPyServer(TangoServerPrototype):
             self.data_ready_value = False
             log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
 
+    def auto_reconnect(self):
+        pass
+
 
 def looping():
     time.sleep(0.001)
@@ -906,7 +912,7 @@ def looping():
                     msg = '%s Recording finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
             except:
-                log_exception('%s Reading data error' % dev.device_name, level=logging.WARNING)
+                log_exception(dev, '%s Reading data error' % dev.device_name, level=logging.WARNING)
     # PicoPyServer.logger.debug('loop end')
 
 
