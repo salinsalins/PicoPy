@@ -771,11 +771,6 @@ class PicoPyServer(TangoServerPrototype):
                     msg = '%s Can not start - record in progress' % self.device_name
                     self.logger.info(msg)
                     return False
-            if value > 1:
-                if not self.picolog.ready():
-                    msg = '%s Can not start - device not ready' % self.device_name
-                    self.logger.info(msg)
-                    return False
             self.picolog.start_recording()
             self.start_time_value = time.time()
             self.record_initiated = True
@@ -787,7 +782,6 @@ class PicoPyServer(TangoServerPrototype):
             return True
         except:
             self.record_initiated = False
-            self.data_ready_value = False
             self.set_state(DevState.FAULT)
             log_exception(self, '%s Recording start error' % self.device_name, level=logging.WARNING)
             return False
