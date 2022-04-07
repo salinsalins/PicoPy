@@ -17,7 +17,7 @@ from tango.server import Device, attribute, command, pipe, device_property
 
 sys.path.append('../TangoUtils')
 from TangoUtils import config_logger, restore_settings, save_settings, log_exception, Configuration, \
-    LOG_FORMAT_STRING_SHORT
+    LOG_FORMAT_STRING_SHORT, TangoLogHandler
 from TangoServerPrototype import TangoServerPrototype
 
 from PicoLog1000 import *
@@ -479,6 +479,7 @@ class PicoPyServer(TangoServerPrototype):
         if self not in PicoPyServer.device_list:
             PicoPyServer.device_list.append(self)
         self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
+        self.logger.addHandler(TangoLogHandler(self))
 
     def set_config(self):
         super().set_config()
