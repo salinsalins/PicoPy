@@ -462,9 +462,9 @@ class PicoPyServer(TangoServerPrototype):
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
-        self.auto_reconnect = False
-        self.auto_reconnect_timeout = 0.0
-        self.auto_reconnect_count = 3
+        self.reconnect_enabled = False
+        self.reconnect_timeout = 0.0
+        self.reconnect_count = 3
         # trigger
         self.trigger_enabled = 0
         self.trigger_auto = 0
@@ -896,16 +896,20 @@ class PicoPyServer(TangoServerPrototype):
             self.data_ready_value = False
             log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
 
-    def auto_reconnect(self):
-        self.auto_reconnect_count -= 1
-        if self.auto_reconnect_count >= 0:
+    def reconnect(self):
+        if not self.reconnect_enabled:
             return
-        if time.time() - self.auto_reconnect_timeout >= 0.0:
+        if self.picolog.last_status != pl1000.PICO_STATUS['PICO_NOT_FOUND']:
+            return
+        self.reconnect_count -= 1
+        if self.reconnect_count > 0:
+            return
+        if time.time() - self.reconnect_timeout >= 0.0:
             return
         self.delete_device()
         self.init_device()
-        self.auto_reconnect_count = 3
-        self.auto_reconnect_timeout = time.time() + 5.0
+        self.reconnect_count = 3
+        self.reconnect_timeout = time.time() + 5.0
 
 
 def looping():
