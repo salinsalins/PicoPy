@@ -50,7 +50,7 @@ MAX_ADC_CHANNELS = 16
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version = '2.5'
+    server_version = '2.6'
     server_name = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -893,7 +893,6 @@ class PicoPyServer(TangoServerPrototype):
                 self.logger.info('%s Data hes been red' % self.device_name)
         except:
             self.record_initiated = False
-            self.data_ready_value = False
             log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
 
     def reconnect(self):
