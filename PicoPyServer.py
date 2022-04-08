@@ -480,7 +480,7 @@ class PicoPyServer(TangoServerPrototype):
             PicoPyServer.device_list.append(self)
         self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
         #
-        self.configure_tango_logging()
+        # self.configure_tango_logging()
 
     def set_config(self):
         super().set_config()
