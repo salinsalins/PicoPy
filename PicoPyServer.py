@@ -12,12 +12,11 @@ import numpy
 import json
 
 import tango
-from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
-from tango.server import Device, attribute, command, pipe, device_property
+from tango import AttrQuality, AttrWriteType, DispLevel, DevState
+from tango.server import Device, attribute, command
 
 sys.path.append('../TangoUtils')
-from TangoUtils import config_logger, restore_settings, save_settings, log_exception, Configuration, \
-    LOG_FORMAT_STRING_SHORT, TangoLogHandler
+from TangoUtils import log_exception
 from TangoServerPrototype import TangoServerPrototype
 
 from PicoLog1000 import *
@@ -479,6 +478,7 @@ class PicoPyServer(TangoServerPrototype):
         if self not in PicoPyServer.device_list:
             PicoPyServer.device_list.append(self)
         self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
+        self.configure_tango_logging()
 
     def set_config(self):
         super().set_config()
@@ -521,8 +521,6 @@ class PicoPyServer(TangoServerPrototype):
         self.logger.info(msg)
 
     def read_picolog_type(self):
-        self.logger.debug('Test debug')
-        self.info_stream('Test debug')
         return self.device_type_str
 
     def read_info(self):
@@ -925,8 +923,16 @@ def looping():
                     dev.logger.info(msg)
             except:
                 log_exception(dev, '%s Reading data error' % dev.device_name, level=logging.WARNING)
+        # if not dev.tango_logging:
+        #     dev.configure_tango_logging()
     # PicoPyServer.logger.debug('loop end')
 
 
+def post_init_callback(server: PicoPyServer):
+    server.logger.debug('enter')
+    util = server.Util()
+    pass
+
 if __name__ == "__main__":
+    # PicoPyServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
     PicoPyServer.run_server(event_loop=looping)
