@@ -485,6 +485,7 @@ class PicoPyServer(TangoServerPrototype):
         try:
             self.device_name = self.get_name()
             self.set_state(DevState.INIT)
+            self.set_status('Initialization is in progess')
             # create PicoLog1000 device
             self.picolog = PicoLog1000()
             # change PicoLog1000 logger to class logger
@@ -492,6 +493,7 @@ class PicoPyServer(TangoServerPrototype):
             # open PicoLog1000 device
             self.picolog.open()
             self.set_state(DevState.ON)
+            self.set_status('PicoLog has been opened')
             self.picolog.get_info()
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
             self.apply_config()
@@ -499,11 +501,12 @@ class PicoPyServer(TangoServerPrototype):
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
             self.logger.info(msg)
             self.set_state(DevState.STANDBY)
+            self.set_status('PicoLog has been initialized successfully')
         except Exception as ex:
             self.init_result = ex
             msg = log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
-            self.set_status('')
+            self.set_status('Error initializing PicoLog')
             return False
         return True
 
@@ -517,6 +520,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             pass
         self.set_state(DevState.CLOSE)
+        self.set_status('PicoLog has been deleted')
         msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
 
@@ -777,13 +781,14 @@ class PicoPyServer(TangoServerPrototype):
             self.record_initiated = True
             self.data_ready_value = False
             self.set_state(DevState.RUNNING)
+            self.set_status('Recording is in progress')
             msg = '%s Recording started' % self.device_name
             self.logger.info(msg)
-            self.info_stream(msg)
             return True
         except:
             self.record_initiated = False
             self.set_state(DevState.FAULT)
+            self.set_status('Recording start fault')
             log_exception(self, '%s Recording start error' % self.device_name, level=logging.WARNING)
             return False
 
@@ -809,12 +814,14 @@ class PicoPyServer(TangoServerPrototype):
                 self.record_initiated = False
                 self.data_ready_value = False
             self.set_state(DevState.STANDBY)
+            self.set_status('Recording has been stopped')
             self.logger.info('%s Recording has been stopped' % self.device_name)
         except:
             if self.record_initiated:
                 self.record_initiated = False
                 self.data_ready_value = False
             self.set_state(DevState.FAULT)
+            self.set_status('Recording stop error')
             log_exception(self, '%s Recording stop error' % self.device_name, level=logging.WARNING)
 
     def assert_proxy(self):
@@ -890,9 +897,13 @@ class PicoPyServer(TangoServerPrototype):
                 self.picolog.read()
                 self.record_initiated = False
                 self.data_ready_value = True
-                self.logger.info('%s Data hes been red' % self.device_name)
+                self.logger.info('%s Data has been red' % self.device_name)
+                self.set_state(DevState.STANDBY)
+                self.set_status('Data is ready')
         except:
             self.record_initiated = False
+            self.set_state(DevState.Fault)
+            self.set_status('Data read error')
             log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
 
     def reconnect(self):
@@ -909,6 +920,8 @@ class PicoPyServer(TangoServerPrototype):
         self.reconnect_timeout = time.time() + 5.0
         self.delete_device()
         self.init_device()
+        self.set_state(DevState.STANDBY)
+        self.set_status('Reconnected successfully')
 
 
 def looping():
