@@ -479,9 +479,6 @@ class PicoPyServer(TangoServerPrototype):
         if self not in PicoPyServer.device_list:
             PicoPyServer.device_list.append(self)
         self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
-        #
-        self.configure_tango_logging()
-        self.info_stream('Test debug')
 
     def set_config(self):
         super().set_config()
@@ -504,8 +501,9 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.STANDBY)
         except Exception as ex:
             self.init_result = ex
-            log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
+            msg = log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
+            self.set_status('')
             return False
         return True
 
