@@ -285,6 +285,7 @@ class PicoLog1000:
             self.reconnect_count = 3
             self.reconnect_timeout = time.time() + 5.0
         except:
+            self.reconnect_timeout = time.time() + 5.0
             self.opened = False
 
 #

@@ -907,10 +907,10 @@ class PicoPyServer(TangoServerPrototype):
             return
         if time.time() - self.reconnect_timeout >= 0.0:
             return
-        self.delete_device()
-        self.init_device()
         self.reconnect_count = 3
         self.reconnect_timeout = time.time() + 5.0
+        self.delete_device()
+        self.init_device()
 
 
 def looping():
