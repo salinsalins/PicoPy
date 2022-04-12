@@ -36,6 +36,16 @@ class PicoLog1000:
         self.points = 0
         self.record_us = 0
         self.sampling = 0.0
+        #
+        self.trigger_enabled = 0
+        self.trigger_channel = "PL1000_CHANNEL_1"
+        self.trigger_edge = 0
+        self.trigger_threshold = 2048
+        self.trigger_hysteresis = 100
+        self.trigger_delay = 10.0
+        self.trigger_auto = False
+        self.trigger_ms = 1000
+        #
         self.data = None
         self.times = None
         self.timeout = None
@@ -46,6 +56,10 @@ class PicoLog1000:
         self.recording_start_time = 0.0
         self.read_time = 0.0
         self.t0 = time.time()
+        #
+        self.reconnect_enabled = False
+        self.reconnect_timeout = 0.0
+        self.reconnect_count = 3
         #
         self.logger.setLevel(logging.DEBUG)
 
@@ -232,6 +246,14 @@ class PicoLog1000:
                                                    ctypes.c_uint16(int(threshold)), ctypes.c_uint16(int(hysteresis)),
                                                    delay_percent)
         assert_pico_ok(self.last_status)
+        self.trigger_enabled = enabled
+        self.trigger_channel = channel
+        self.trigger_edge = edge
+        self.trigger_threshold = threshold
+        self.trigger_hysteresis = hysteresis
+        self.trigger_delay = delay_percent
+        self.trigger_auto = auto_trigger
+        self.trigger_ms = auto_ms
 
     def ping(self):
         t0 = time.time()
@@ -242,6 +264,28 @@ class PicoLog1000:
         else:
             return -1.0
 
+    def reconnect(self):
+        if not self.reconnect_enabled:
+            return
+        if self.last_status != pl1000.PICO_STATUS['PICO_NOT_FOUND']:
+            return
+        self.reconnect_count -= 1
+        if self.reconnect_count > 0:
+            return
+        if time.time() - self.reconnect_timeout >= 0.0:
+            return
+        try:
+            status1 = pl1000.pl1000Stop(self.handle)
+            status2 = pl1000.pl1000CloseUnit(self.handle)
+            self.open()
+            self.set_timing(self.channels, self.points, self.record_us)
+            self.set_trigger(self.trigger_enabled, self.trigger_channel, self.trigger_edge,
+                        self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay,
+                        self.trigger_auto, self.trigger_ms)
+            self.reconnect_count = 3
+            self.reconnect_timeout = time.time() + 5.0
+        except:
+            self.opened = False
 
 #
 # class FakePicoLog1000(PicoLog1000):
