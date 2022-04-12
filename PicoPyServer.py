@@ -480,7 +480,8 @@ class PicoPyServer(TangoServerPrototype):
             PicoPyServer.device_list.append(self)
         self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
         #
-        # self.configure_tango_logging()
+        self.configure_tango_logging()
+        self.info_stream('Test debug')
 
     def set_config(self):
         super().set_config()
@@ -520,9 +521,10 @@ class PicoPyServer(TangoServerPrototype):
         self.set_state(DevState.CLOSE)
         msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
-        self.info_stream(msg)
 
     def read_picolog_type(self):
+        self.logger.debug('Test debug')
+        self.info_stream('Test debug')
         return self.device_type_str
 
     def read_info(self):
