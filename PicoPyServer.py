@@ -832,7 +832,7 @@ class PicoPyServer(TangoServerPrototype):
         try:
             attrib = channel
             if isinstance(channel, int):
-                attrib = name_from_number(channel)
+                attrib = getattr(self, name_from_number(channel))
             elif isinstance(channel, str):
                 attrib = getattr(self, str(channel))
             if props is None:
