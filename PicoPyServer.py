@@ -504,7 +504,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_status('PicoLog has been initialized successfully')
         except Exception as ex:
             self.init_result = ex
-            msg = log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
+            log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
             self.set_status('Error initializing PicoLog')
             return False
@@ -535,10 +535,8 @@ class PicoPyServer(TangoServerPrototype):
             v = self.picolog.ping()
             return v
         except:
-            msg = '%s Ping error %s' % (self.device_name, sys.exc_info()[1])
-            self.logger.info(msg)
-            self.info_stream(msg)
-            self.logger.debug('', exc_info=True)
+            log_exception(self, '%s Ping error' % self.device_name, level=logging.INFO)
+            self.reconnect()
             return -1.0
 
     def read_scale(self):
@@ -582,6 +580,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channel_record_time_us'] = last
             log_exception(self, 'Incorrect channel_record_time_us')
+            self.reconnect()
 
     def read_points_per_channel(self):
         return self.picolog.points
@@ -594,6 +593,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['points_per_channel'] = last
             log_exception(self, 'Incorrect points_per_channel')
+            self.reconnect()
 
     def read_channels(self):
         return str(self.picolog.channels)
@@ -607,6 +607,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
+            self.reconnect()
 
     def read_start_time(self):
         return self.picolog.recording_start_time
@@ -790,6 +791,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.FAULT)
             self.set_status('Recording start fault')
             log_exception(self, '%s Recording start error' % self.device_name, level=logging.WARNING)
+            self.reconnect()
             return False
 
     @command(dtype_in=None)
@@ -823,6 +825,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.FAULT)
             self.set_status('Recording stop error')
             log_exception(self, '%s Recording stop error' % self.device_name, level=logging.WARNING)
+            self.reconnect()
 
     def assert_proxy(self):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
@@ -905,23 +908,27 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.Fault)
             self.set_status('Data read error')
             log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
+            self.reconnect()
 
     def reconnect(self):
+        self.logger.debug('enter')
         if not self.reconnect_enabled:
             return
-        if self.picolog.last_status != pl1000.PICO_STATUS['PICO_NOT_FOUND']:
+        if self.picolog.opened and self.picolog.last_status != pl1000.PICO_STATUS['PICO_NOT_FOUND']:
             return
         self.reconnect_count -= 1
-        if self.reconnect_count > 0:
+        if self.picolog.opened and self.reconnect_count > 0:
             return
         if time.time() - self.reconnect_timeout >= 0.0:
             return
+        self.logger.debug('Reconnecting ...')
         self.reconnect_count = 3
         self.reconnect_timeout = time.time() + 5.0
         self.delete_device()
         self.init_device()
         self.set_state(DevState.STANDBY)
         self.set_status('Reconnected successfully')
+        self.logger.debug('Reconnected successfully')
 
 
 def looping():
