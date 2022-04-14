@@ -11,6 +11,7 @@ from picosdk.constants import PICO_STATUS
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
 from picosdk.functions import assert_pico_ok
+#from picosdk.functions import assert_pico_ok as library_assert_pico_ok
 
 
 class PicoLog1000:

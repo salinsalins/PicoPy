@@ -49,7 +49,7 @@ MAX_ADC_CHANNELS = 16
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version = '3.0'
+    server_version = '3.1'
     server_name = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -462,7 +462,7 @@ class PicoPyServer(TangoServerPrototype):
         self.data_ready_value = False
         self.init_result = None
         self.reconnect_enabled = False
-        self.reconnect_timeout = 0.0
+        self.reconnect_timeout = time.time() + 5.0
         self.reconnect_count = 3
         # trigger
         self.trigger_enabled = 0
@@ -485,14 +485,15 @@ class PicoPyServer(TangoServerPrototype):
         try:
             self.device_name = self.get_name()
             self.set_state(DevState.INIT)
-            self.set_status('Initialization is in progess')
+            self.set_status('Initialization')
+            self.reconnect_enabled = self.config.get('auto_reconnect', False)
             # create PicoLog1000 device
             self.picolog = PicoLog1000()
             # change PicoLog1000 logger to class logger
             self.picolog.logger = self.logger
             # open PicoLog1000 device
             self.picolog.open()
-            self.set_state(DevState.ON)
+            self.set_state(DevState.OPEN)
             self.set_status('PicoLog has been opened')
             self.picolog.get_info()
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
@@ -519,6 +520,8 @@ class PicoPyServer(TangoServerPrototype):
             self.picolog.close()
         except:
             pass
+        self.record_initiated = False
+        self.data_ready_value = False
         self.set_state(DevState.CLOSE)
         self.set_status('PicoLog has been deleted')
         msg = '%s PicoLog has been deleted' % self.device_name
@@ -536,8 +539,8 @@ class PicoPyServer(TangoServerPrototype):
             return v
         except:
             log_exception(self, '%s Ping error' % self.device_name, level=logging.INFO)
-            self.reconnect()
-            return -1.0
+        self.reconnect()
+        return -1.0
 
     def read_scale(self):
         return self.picolog.scale
@@ -580,7 +583,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channel_record_time_us'] = last
             log_exception(self, 'Incorrect channel_record_time_us')
-            self.reconnect()
+        self.reconnect()
 
     def read_points_per_channel(self):
         return self.picolog.points
@@ -593,7 +596,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['points_per_channel'] = last
             log_exception(self, 'Incorrect points_per_channel')
-            self.reconnect()
+        self.reconnect()
 
     def read_channels(self):
         return str(self.picolog.channels)
@@ -607,7 +610,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
-            self.reconnect()
+        self.reconnect()
 
     def read_start_time(self):
         return self.picolog.recording_start_time
@@ -631,7 +634,6 @@ class PicoPyServer(TangoServerPrototype):
             channel_attribute.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s Data is not ready for %s' % (self.device_name, channel_name)
             self.logger.info(msg)
-            self.error_stream(msg)
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
@@ -752,18 +754,18 @@ class PicoPyServer(TangoServerPrototype):
 
     def read_times(self):
         if self.data_ready_value:
-            self.logger.debug('%s Reading times %s', self.device_name, self.picolog.times.shape)
+            self.logger.debug('%s Reading time array %s', self.device_name, self.picolog.times.shape)
             self.times.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.times
         else:
             self.times.set_quality(AttrQuality.ATTR_INVALID)
-            msg = '%s Data is not ready' % self.device_name
+            msg = '%s Times array is not ready' % self.device_name
             self.logger.warning(msg)
-            self.error_stream(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
 
     @command(dtype_in=None, dtype_out=bool)
     def ready(self):
+        self.assert_picolog_open()
         try:
             return self.picolog.ready()
         except:
@@ -772,6 +774,7 @@ class PicoPyServer(TangoServerPrototype):
 
     @command(dtype_in=int, dtype_out=bool)
     def _start(self, value=0):
+        self.assert_picolog_open()
         try:
             if value > 0:
                 if self.record_initiated:
@@ -791,7 +794,6 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.FAULT)
             self.set_status('Recording start fault')
             log_exception(self, '%s Recording start error' % self.device_name, level=logging.WARNING)
-            self.reconnect()
             return False
 
     @command(dtype_in=None)
@@ -812,24 +814,37 @@ class PicoPyServer(TangoServerPrototype):
     def stop_recording(self):
         try:
             self.picolog.stop()
-            if self.record_initiated:
-                self.record_initiated = False
-                self.data_ready_value = False
             self.set_state(DevState.STANDBY)
             self.set_status('Recording has been stopped')
             self.logger.info('%s Recording has been stopped' % self.device_name)
         except:
-            if self.record_initiated:
-                self.record_initiated = False
-                self.data_ready_value = False
             self.set_state(DevState.FAULT)
             self.set_status('Recording stop error')
             log_exception(self, '%s Recording stop error' % self.device_name, level=logging.WARNING)
-            self.reconnect()
+        self.record_initiated = False
+        self.data_ready_value = False
 
     def assert_proxy(self):
         if not hasattr(self, 'device_proxy') or self.device_proxy is None:
             self.device_proxy = tango.DeviceProxy(self.device_name)
+
+    def assert_picolog_open(self):
+        if self.picolog.opened:
+            if self.picolog.last_status == pl1000.PICO_STATUS['PICO_OK'] or \
+                    self.picolog.last_status == pl1000.PICO_STATUS['PICO_BUSY']:
+                return True
+            if self.picolog.last_status == pl1000.PICO_STATUS['PICO_NOT_RESPONDING'] or \
+                    self.picolog.last_status == pl1000.PICO_STATUS['PICO_NOT_FOUND']:
+                self.picolog.opened = False
+                self.record_initiated = False
+                self.data_ready_value = False
+                self.reconnect()
+                return self.picolog.opened
+        else:
+            self.record_initiated = False
+            self.data_ready_value = False
+            self.reconnect()
+            return self.picolog.opened
 
     def set_channel_properties(self, channel, props=None):
         try:
@@ -866,6 +881,7 @@ class PicoPyServer(TangoServerPrototype):
         self.record_in_progress.set_write_value(self.record_initiated)
 
     def set_sampling(self):
+        self.assert_picolog_open()
         channels_list = list_from_str(self.config.get('channels', '[1]'))
         points = int(self.config.get('points_per_channel', 1000))
         record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
@@ -877,6 +893,7 @@ class PicoPyServer(TangoServerPrototype):
         self.set_device_property('channel_record_time_us', str(self.config['channel_record_time_us']))
 
     def set_trigger(self):
+        self.assert_picolog_open()
         # read trigger parameters
         self.trigger_enabled = self.config.get('trigger_enabled', 0)
         self.trigger_auto = self.config.get('trigger_auto', 0)
@@ -895,6 +912,7 @@ class PicoPyServer(TangoServerPrototype):
     def read(self):
         if not self.record_initiated:
             return False
+        self.assert_picolog_open()
         try:
             if self.picolog.ready():
                 self.picolog.read()
@@ -908,27 +926,28 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.Fault)
             self.set_status('Data read error')
             log_exception(self, '%s Reading data error' % self.device_name, level=logging.WARNING)
-            self.reconnect()
 
     def reconnect(self):
-        self.logger.debug('enter')
         if not self.reconnect_enabled:
             return
-        if self.picolog.opened and self.picolog.last_status != pl1000.PICO_STATUS['PICO_NOT_FOUND']:
-            return
         self.reconnect_count -= 1
-        if self.picolog.opened and self.reconnect_count > 0:
+        if self.reconnect_count > 0:
             return
-        if time.time() - self.reconnect_timeout >= 0.0:
+        if time.time() - self.reconnect_timeout <= 0.0:
             return
         self.logger.debug('Reconnecting ...')
         self.reconnect_count = 3
         self.reconnect_timeout = time.time() + 5.0
         self.delete_device()
         self.init_device()
-        self.set_state(DevState.STANDBY)
-        self.set_status('Reconnected successfully')
-        self.logger.debug('Reconnected successfully')
+        if self.picolog.opened:
+            self.set_state(DevState.STANDBY)
+            self.set_status('Reconnected successfully')
+            self.logger.info('Reconnected successfully')
+        else:
+            self.set_state(DevState.FAULT)
+            self.set_status('Reconnection Error')
+            self.logger.warning('Reconnection Error')
 
 
 def looping():
@@ -937,10 +956,10 @@ def looping():
         time.sleep(0.001)
         if dev.record_initiated:
             try:
-                if dev.picolog.ready():
-                    dev.read()
+                if dev.ready():
                     msg = '%s Recording finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
+                    dev.read()
             except:
                 log_exception(dev, '%s Reading data error' % dev.device_name, level=logging.WARNING)
         # if not dev.tango_logging:
