@@ -958,9 +958,13 @@ class PicoPyServer(TangoServerPrototype):
 
 
 def looping():
+    global t0
     time.sleep(0.001)
     for dev in PicoPyServer.device_list:
         time.sleep(0.001)
+        if time.time() - t0 > 1.0:
+            t0 = time.time()
+            dev.assert_picolog_open()
         if dev.record_initiated:
             try:
                 if dev.ready():
@@ -981,5 +985,6 @@ def post_init_callback(server: PicoPyServer):
 
 
 if __name__ == "__main__":
+    t0 = time.time()
     # PicoPyServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
     PicoPyServer.run_server(event_loop=looping)
