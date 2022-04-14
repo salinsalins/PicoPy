@@ -27,7 +27,7 @@ def list_from_str(input_str):
         result = json.loads(input_str)
         if not isinstance(result, list):
             return []
-        return result
+        return result[:16]
     except:
         return []
 
@@ -497,6 +497,15 @@ class PicoPyServer(TangoServerPrototype):
             self.set_status('PicoLog has been opened')
             self.picolog.get_info()
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
+            try:
+                self.max_channels = int(self.device_type_str[-2:])
+            except:
+                self.max_channels = 16
+            try:
+                self.bits = int(self.device_type_str[-4:-2])
+            except:
+                self.bits = 12
+            self.max_adc = 2 ** self.bits
             self.apply_config()
             self.init_result = None
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
@@ -583,7 +592,6 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channel_record_time_us'] = last
             log_exception(self, 'Incorrect channel_record_time_us')
-        self.reconnect()
 
     def read_points_per_channel(self):
         return self.picolog.points
@@ -596,7 +604,6 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['points_per_channel'] = last
             log_exception(self, 'Incorrect points_per_channel')
-        self.reconnect()
 
     def read_channels(self):
         return str(self.picolog.channels)
@@ -605,12 +612,12 @@ class PicoPyServer(TangoServerPrototype):
         last = self.config.get('channels', '[1]')
         try:
             channels_list = list_from_str(str(value))
+            channels_list = channels_list[:self.max_channels]
             self.config['channels'] = str(channels_list)
             self.set_sampling()
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
-        self.reconnect()
 
     def read_start_time(self):
         return self.picolog.recording_start_time
@@ -873,7 +880,7 @@ class PicoPyServer(TangoServerPrototype):
             self.set_channel_properties(name_from_number(i))
             self.set_channel_properties(name_from_number(i, xy='x'),
                                         {'display_unit': 1.0,
-                                         'max_value': self.picolog.times[-1, -1]})
+                                         'max_value': (self.picolog.points - 1) * self.picolog.sampling})
         self.set_channel_properties(self.raw_data)
         self.channel_record_time_us.set_write_value(self.config['channel_record_time_us'])
         self.points_per_channel.set_write_value(self.config['points_per_channel'])
@@ -971,6 +978,7 @@ def post_init_callback(server: PicoPyServer):
     server.logger.debug('enter')
     util = server.Util()
     pass
+
 
 if __name__ == "__main__":
     # PicoPyServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
