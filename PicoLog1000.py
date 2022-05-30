@@ -333,7 +333,7 @@ if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
     pl.set_timing([1, 2, 3, 4], 10000, 200000)
-    pl.set_trigger(0, 1, 0, 1024, -50.0)
+    pl.set_trigger(0, 1, 0, threshold=1024, delay_percent=-50.0)
     t0 = time.time()
     pl.start_recording()
     pl.wait_result(5.0)
