@@ -958,7 +958,7 @@ class PicoPyServer(TangoServerPrototype):
 
 def looping():
     global t0
-    time.sleep(0.001)
+    time.sleep(0.010)
     for dev in PicoPyServer.device_list:
         time.sleep(0.001)
         if time.time() - t0 > 1.0:
