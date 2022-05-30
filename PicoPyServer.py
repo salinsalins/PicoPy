@@ -13,10 +13,10 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import attribute, command
 
-from log_exception import log_exception
-
 sys.path.append('../TangoUtils')
 from TangoServerPrototype import TangoServerPrototype
+from log_exception import log_exception
+
 
 from PicoLog1000 import *
 
