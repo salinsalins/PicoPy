@@ -5,15 +5,13 @@
 PicoLog1000 series tango device server
 
 """
-import logging
-import time
-import sys
-import numpy
 import json
+import sys
 
+import numpy
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
-from tango.server import Device, attribute, command
+from tango.server import attribute, command
 
 from log_exception import log_exception
 
