@@ -443,7 +443,8 @@ class PicoPyServer(TangoServerPrototype):
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
                          doc="Raw data from ADC for all channels. 16 bit integers, converted to Volts by display_units")
-    # timings for all  channels 32 bit floats in ms
+
+    # timings for all  channels 32-bit floats in ms
     times = attribute(label="times", dtype=[[numpy.float32]],
                       max_dim_y=MAX_ADC_CHANNELS,
                       max_dim_x=MAX_DATA_ARRAY_SIZE,
