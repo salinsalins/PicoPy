@@ -111,7 +111,7 @@ class PicoPyServer(TangoServerPrototype):
                                        min_value=0,
                                        display_level=DispLevel.OPERATOR,
                                        access=AttrWriteType.READ_WRITE,
-                                       unit="", format="%7d",
+                                       unit="us", format="%7d",
                                        doc="Channel record time in microseconds")
 
     points_per_channel = attribute(label="points_per_channel", dtype=int,
