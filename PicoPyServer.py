@@ -6,14 +6,13 @@ PicoLog1000 series tango device server
 
 """
 import json
-import sys
+import sys; sys.path.append('../TangoUtils')
 
 import numpy
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import attribute, command
 
-sys.path.append('../TangoUtils')
 from TangoServerPrototype import TangoServerPrototype
 from log_exception import log_exception
 
