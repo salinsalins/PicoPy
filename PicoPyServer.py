@@ -802,10 +802,10 @@ class PicoPyServer(TangoServerPrototype):
             log_exception(self, '%s Recording start error' % self.device_name, level=logging.WARNING)
             return False
 
-    @command(dtype_in=None)
+    @command(dtype_in=None, dtype_out=bool)
     def start_recording(self):
         self.stop_recording()
-        self._start()
+        return self._start()
 
     @command(dtype_in=None)
     def apply_config(self):
