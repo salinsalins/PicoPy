@@ -11,7 +11,9 @@ from picosdk.constants import PICO_STATUS
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
 from picosdk.functions import assert_pico_ok
-#from picosdk.functions import assert_pico_ok as library_assert_pico_ok
+
+
+# from picosdk.functions import assert_pico_ok as library_assert_pico_ok
 
 
 class PicoLog1000:
@@ -281,13 +283,14 @@ class PicoLog1000:
             self.open()
             self.set_timing(self.channels, self.points, self.record_us)
             self.set_trigger(self.trigger_enabled, self.trigger_channel, self.trigger_edge,
-                        self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay,
-                        self.trigger_auto, self.trigger_ms)
+                             self.trigger_threshold, self.trigger_hysteresis, self.trigger_delay,
+                             self.trigger_auto, self.trigger_ms)
             self.reconnect_count = 3
             self.reconnect_timeout = time.time() + 5.0
         except:
             self.reconnect_timeout = time.time() + 5.0
             self.opened = False
+
 
 #
 # class FakePicoLog1000(PicoLog1000):
