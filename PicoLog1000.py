@@ -122,6 +122,8 @@ class PicoLog1000:
                 assert_pico_ok(self.last_status)
                 for j in range(len(out_info) - 1):
                     self.info[i] += chr(out_info[j])
+            except KeyboardInterrupt:
+                raise
             except:
                 pass
         return {a: self.info[a] for a in sources}
@@ -287,6 +289,8 @@ class PicoLog1000:
                              self.trigger_auto, self.trigger_ms)
             self.reconnect_count = 3
             self.reconnect_timeout = time.time() + 5.0
+        except KeyboardInterrupt:
+            raise
         except:
             self.reconnect_timeout = time.time() + 5.0
             self.opened = False

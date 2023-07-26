@@ -26,6 +26,8 @@ def list_from_str(input_str):
         if not isinstance(result, list):
             return []
         return result[:16]
+    except KeyboardInterrupt:
+        raise
     except:
         return []
 
@@ -160,7 +162,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 02 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 02 data. 16 bit integers. Volts = data * display_units")
 
     chany03 = attribute(label="Channel_03", dtype=[numpy.uint16],
                         min_value=0,
@@ -170,7 +172,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 03 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 03 data. 16 bit integers. Volts = data * display_units")
 
     chany04 = attribute(label="Channel_04", dtype=[numpy.uint16],
                         min_value=0,
@@ -180,7 +182,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 04 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 04 data. 16 bit integers. Volts = data * display_units")
 
     chany05 = attribute(label="Channel_05", dtype=[numpy.uint16],
                         min_value=0,
@@ -190,7 +192,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 05 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 05 data. 16 bit integers. Volts = data * display_units")
 
     chany06 = attribute(label="Channel_06", dtype=[numpy.uint16],
                         min_value=0,
@@ -200,7 +202,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 06 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 06 data. 16 bit integers. Volts = data * display_units")
 
     chany07 = attribute(label="Channel_07", dtype=[numpy.uint16],
                         min_value=0,
@@ -210,7 +212,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 07 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 07 data. 16 bit integers. Volts = data * display_units")
 
     chany08 = attribute(label="Channel_08", dtype=[numpy.uint16],
                         min_value=0,
@@ -220,7 +222,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 08 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 08 data. 16 bit integers. Volts = data * display_units")
 
     chany09 = attribute(label="Channel_09", dtype=[numpy.uint16],
                         min_value=0,
@@ -230,7 +232,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 09 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 09 data. 16 bit integers. Volts = data * display_units")
 
     chany10 = attribute(label="Channel_10", dtype=[numpy.uint16],
                         min_value=0,
@@ -240,7 +242,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 10 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 10 data. 16 bit integers. Volts = data * display_units")
 
     chany11 = attribute(label="Channel_11", dtype=[numpy.uint16],
                         min_value=0,
@@ -250,7 +252,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 11 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 11 data. 16 bit integers. Volts = data * display_units")
 
     chany12 = attribute(label="Channel_12", dtype=[numpy.uint16],
                         min_value=0,
@@ -260,7 +262,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 12 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 12 data. 16 bit integers. Volts = data * display_units")
 
     chany13 = attribute(label="Channel_13", dtype=[numpy.uint16],
                         min_value=0,
@@ -270,7 +272,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 13 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 13 data. 16 bit integers. Volts = data * display_units")
 
     chany14 = attribute(label="Channel_14", dtype=[numpy.uint16],
                         min_value=0,
@@ -280,7 +282,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 14 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 14 data. 16 bit integers. Volts = data * display_units")
 
     chany15 = attribute(label="Channel_15", dtype=[numpy.uint16],
                         min_value=0,
@@ -290,7 +292,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 15 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 15 data. 16 bit integers. Volts = data * display_units")
 
     chany16 = attribute(label="Channel_16", dtype=[numpy.uint16],
                         min_value=0,
@@ -300,7 +302,7 @@ class PicoPyServer(TangoServerPrototype):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
-                        doc="Channel 16 measurements. 16 bit integers, converted to Volts by display_units")
+                        doc="Channel 16 data. 16 bit integers. Volts = data * display_units")
 
     # channels for ADC times 32 bit floats in ms
     chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
@@ -498,10 +500,14 @@ class PicoPyServer(TangoServerPrototype):
             self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
             try:
                 self.max_channels = int(self.device_type_str[-2:])
+            except KeyboardInterrupt:
+                raise
             except:
                 self.max_channels = 16
             try:
                 self.bits = int(self.device_type_str[-4:-2])
+            except KeyboardInterrupt:
+                raise
             except:
                 self.bits = 12
             self.max_adc = 2 ** self.bits
@@ -522,10 +528,14 @@ class PicoPyServer(TangoServerPrototype):
     def delete_device(self):
         try:
             self.picolog.stop()
+        except KeyboardInterrupt:
+            raise
         except:
             pass
         try:
             self.picolog.close()
+        except KeyboardInterrupt:
+            raise
         except:
             pass
         self.record_initiated = False
@@ -545,6 +555,8 @@ class PicoPyServer(TangoServerPrototype):
         try:
             v = self.picolog.ping()
             return v
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception(self, '%s Ping error' % self.device_name, level=logging.INFO)
         self.reconnect()
@@ -588,6 +600,8 @@ class PicoPyServer(TangoServerPrototype):
         try:
             self.config['channel_record_time_us'] = int(value)
             self.set_sampling()
+        except KeyboardInterrupt:
+            raise
         except:
             self.config['channel_record_time_us'] = last
             log_exception(self, 'Incorrect channel_record_time_us')
@@ -600,6 +614,8 @@ class PicoPyServer(TangoServerPrototype):
         try:
             self.config['points_per_channel'] = int(value)
             self.set_sampling()
+        except KeyboardInterrupt:
+            raise
         except:
             self.config['points_per_channel'] = last
             log_exception(self, 'Incorrect points_per_channel')
@@ -614,6 +630,8 @@ class PicoPyServer(TangoServerPrototype):
             channels_list = channels_list[:self.max_channels]
             self.config['channels'] = str(channels_list)
             self.set_sampling()
+        except KeyboardInterrupt:
+            raise
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
@@ -774,6 +792,8 @@ class PicoPyServer(TangoServerPrototype):
         self.assert_picolog_open()
         try:
             return self.picolog.ready()
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception(self, '%s Readiness query error', self.device_name, level=logging.WARNING)
             return False
@@ -795,6 +815,8 @@ class PicoPyServer(TangoServerPrototype):
             msg = '%s Recording started' % self.device_name
             self.logger.info(msg)
             return True
+        except KeyboardInterrupt:
+            raise
         except:
             self.record_initiated = False
             self.set_state(DevState.FAULT)
@@ -823,6 +845,8 @@ class PicoPyServer(TangoServerPrototype):
             self.set_state(DevState.STANDBY)
             self.set_status('Recording has been stopped')
             self.logger.info('%s Recording has been stopped' % self.device_name)
+        except KeyboardInterrupt:
+            raise
         except:
             self.set_state(DevState.FAULT)
             self.set_status('Recording stop error')
@@ -868,9 +892,13 @@ class PicoPyServer(TangoServerPrototype):
                 for p in props:
                     if hasattr(prop, p):
                         setattr(prop, p, props[p])
+            except KeyboardInterrupt:
+                raise
             except:
                 pass
             attrib.set_properties(prop)
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception(self, 'Properties set error')
 
@@ -927,6 +955,8 @@ class PicoPyServer(TangoServerPrototype):
                 self.logger.info('%s Data has been red' % self.device_name)
                 self.set_state(DevState.STANDBY)
                 self.set_status('Data is ready')
+        except KeyboardInterrupt:
+            raise
         except:
             self.record_initiated = False
             self.set_state(DevState.Fault)
@@ -970,6 +1000,8 @@ def looping():
                     msg = '%s Recording finished, data is ready' % dev.device_name
                     dev.logger.info(msg)
                     dev.read()
+            except KeyboardInterrupt:
+                raise
             except:
                 log_exception(dev, '%s Reading data error' % dev.device_name, level=logging.WARNING)
         # if not dev.tango_logging:
