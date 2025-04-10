@@ -112,7 +112,7 @@ class PicoPyServer(TangoServerPrototype):
                                        min_value=0,
                                        display_level=DispLevel.OPERATOR,
                                        access=AttrWriteType.READ_WRITE,
-                                       unit="us", format="%7d",
+                                       unit="us", format="%9d",
                                        doc="Channel record time in microseconds")
 
     points_per_channel = attribute(label="points_per_channel", dtype=int,
@@ -120,7 +120,7 @@ class PicoPyServer(TangoServerPrototype):
                                    max_value=MAX_DATA_ARRAY_SIZE,
                                    display_level=DispLevel.OPERATOR,
                                    access=AttrWriteType.READ_WRITE,
-                                   unit="", format="%7d",
+                                   unit="", format="%9d",
                                    doc="Points per channel")
 
     channels = attribute(label="channels", dtype=str,
@@ -540,7 +540,7 @@ class PicoPyServer(TangoServerPrototype):
             pass
         self.record_initiated = False
         self.data_ready_value = False
-        self.set_state(DevState.CLOSE)
+        self.set_state(DevState.DISABLE)
         self.set_status('PicoLog has been deleted')
         msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
@@ -831,6 +831,7 @@ class PicoPyServer(TangoServerPrototype):
 
     @command(dtype_in=None)
     def apply_config(self):
+        self.read_config_from_properties()
         # set channels for measurements, sampling interval, number of points for channel, creates data arrays
         self.set_sampling()
         # set additional properties for channels:
