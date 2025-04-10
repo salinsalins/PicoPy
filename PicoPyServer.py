@@ -826,6 +826,7 @@ class PicoPyServer(TangoServerPrototype):
 
     @command(dtype_in=None, dtype_out=bool)
     def start_recording(self):
+        self.apply_config()
         self.stop_recording()
         return self._start()
 
