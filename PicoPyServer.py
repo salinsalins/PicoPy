@@ -49,7 +49,7 @@ MAX_ADC_CHANNELS = 16
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '3.1'
+    server_version_value = '3.2'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
 
