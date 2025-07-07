@@ -34,7 +34,7 @@ class PicoLog1000:
         #
         self.range = 2.5  # [V] max value of input voltage
         self.max_adc = 4096  # [V] max ADC value corresponding to max input voltage
-        self.scale = self.range / self.max_adc  # self.range/self.max_adc Volts per ADC quantum
+        self.scale = self.range / self.max_adc  # Volts per ADC quantum
         self.channels = []
         self.points = 0
         self.record_us = 0
