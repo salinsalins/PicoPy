@@ -203,12 +203,24 @@ class PicoLog1000:
         return ready.value
 
     def wait_result(self, timeout=None):
+        use_timer = True
+        dt = 0.1
+        t1 = time.time()
+        time.sleep(dt)
+        t2 = time.time()
+        if (t2 - t1) < 0.9 * dt:
+            self.logger.debug("Incorrect timer operation")
+            use_timer = False
         if timeout is None:
-            timeout = self.timeout
-        if timeout is None:
-            return self.ready()
+            timeout = self.record_us * 1e-6 +0.05
         t0 = time.time()
+        i = 0
         while not self.ready():
+            if not use_timer:
+                time.sleep(dt)
+                i += 1
+                if i*dt > timeout:
+                    return False
             if (time.time() - t0) > timeout:
                 return False
         return self.ready()
@@ -339,11 +351,13 @@ class PicoLog1000:
 if __name__ == "__main__":
     pl = PicoLog1000()
     pl.open()
-    pl.set_timing([1, 2, 3, 4], 10000, 200000)
+    channel_points = 10000
+    channel_record_us = 200000
+    pl.set_timing([1, 2, 3, 4], channel_points, channel_record_us)
     pl.set_trigger(0, 1, 0, threshold=1024, delay_percent=-50.0)
     t0 = time.time()
     pl.start_recording()
-    pl.wait_result(5.0)
+    pl.wait_result()
     pl.read()
     pl.close()
     print('Reading completed in', time.time() - t0, 'seconds')
