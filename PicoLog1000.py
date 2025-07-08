@@ -202,15 +202,16 @@ class PicoLog1000:
         assert_pico_ok(self.last_status)
         return ready.value
 
-    def wait_result(self, timeout=None):
-        use_timer = True
-        dt = 0.1
-        t1 = time.time()
-        time.sleep(dt)
-        t2 = time.time()
-        if (t2 - t1) < 0.9 * dt:
-            self.logger.debug("Incorrect timer operation")
-            use_timer = False
+    def wait_result(self, timeout=None, use_timer=None):
+        if use_timer is None:
+            use_timer = True
+            dt = 0.1
+            t1 = time.time()
+            time.sleep(dt)
+            t2 = time.time()
+            if (t2 - t1) < 0.9 * dt:
+                self.logger.debug("Incorrect timer operation")
+                use_timer = False
         if timeout is None:
             timeout = self.record_us * 1e-6 +0.05
         t0 = time.time()
