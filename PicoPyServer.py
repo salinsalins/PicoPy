@@ -55,7 +55,7 @@ class PicoPyServerError(Exception):
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '4.0'
+    server_version_value = '4.1'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -121,14 +121,14 @@ class PicoPyServer(TangoServerPrototype):
                            doc="Is data ready for reading")
 
     channel_record_time_us = attribute(label="channel_record_time_us", dtype=int,
-                                       min_value=0,
+                                       min_value=10,
                                        display_level=DispLevel.OPERATOR,
                                        access=AttrWriteType.READ_WRITE,
                                        unit="us", format="%9d",
                                        doc="Channel record time in microseconds")
 
     points_per_channel = attribute(label="points_per_channel", dtype=int,
-                                   min_value=0,
+                                   min_value=1,
                                    max_value=MAX_DATA_ARRAY_SIZE,
                                    display_level=DispLevel.OPERATOR,
                                    access=AttrWriteType.READ_WRITE,
@@ -528,6 +528,7 @@ class PicoPyServer(TangoServerPrototype):
                 log_exception('Cannot determine number of bits, 12 will be set',exc_info=False)
                 self.bits = 12
             self.max_adc = 2 ** self.bits
+            self.read_config_from_properties()
             self.apply_config()
             self.init_result = None
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
@@ -630,6 +631,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channel_record_time_us'] = last
             log_exception(self, 'Incorrect channel_record_time_us')
+        self.write_config_to_properties()
 
     def read_points_per_channel(self):
         return self.picolog.points
@@ -649,6 +651,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['points_per_channel'] = last
             log_exception(self, 'Incorrect points_per_channel')
+        self.write_config_to_properties()
 
     def read_channels(self):
         return str(self.picolog.channels)
@@ -670,6 +673,7 @@ class PicoPyServer(TangoServerPrototype):
         except:
             self.config['channels'] = last
             log_exception(self, 'Incorrect channels value')
+        self.write_config_to_properties()
 
     def read_start_time(self):
         return self.picolog.recording_start_time
@@ -979,6 +983,8 @@ class PicoPyServer(TangoServerPrototype):
             self.set_device_property('points_per_channel', str(self.config['points_per_channel']))
             self.config['channel_record_time_us'] = self.picolog.record_us
             self.set_device_property('channel_record_time_us', str(self.config['channel_record_time_us']))
+            # self.channel_record_time_us.set_write_value(int(self.config['channel_record_time_us']))
+            # self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
         except:
             log_exception(exc_info=False)
 

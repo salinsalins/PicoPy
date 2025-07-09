@@ -13,6 +13,8 @@ from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
 from picosdk.functions import assert_pico_ok
 
+MAX_CAPTURE_SIZE = 1000000
+US_LIMIT = 8096
 
 # from picosdk.functions import assert_pico_ok as library_assert_pico_ok
 
@@ -152,8 +154,16 @@ class PicoLog1000:
         assert_pico_ok(self.last_status)
 
     def set_timing(self, channels, channel_points, channel_record_us):
-        self.assert_open()
         nc = len(channels)
+        total_points = nc * channel_points
+        interval = float(channel_record_us) / total_points
+        if total_points > MAX_CAPTURE_SIZE:
+            self.logger.error('Too many points requested - ignored')
+            return False
+        if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
+            self.logger.error('Requested recording is too fast - ignored')
+            return False
+        self.assert_open()
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
             cnls[i] = channels[i]
