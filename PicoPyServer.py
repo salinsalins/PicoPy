@@ -50,9 +50,12 @@ MAX_DATA_ARRAY_SIZE = 1000000
 MAX_ADC_VALUE = 4095
 MAX_ADC_CHANNELS = 16
 
+class PicoPyServerError(Exception):
+    pass
+
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '3.2'
+    server_version_value = '4.0'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
 
@@ -545,13 +548,13 @@ class PicoPyServer(TangoServerPrototype):
         except KeyboardInterrupt:
             raise
         except:
-            log_exception()
+            log_exception(exc_info=False)
         try:
             self.picolog.close()
         except KeyboardInterrupt:
             raise
         except:
-            log_exception()
+            log_exception(exc_info=False)
         self.record_initiated = False
         self.data_ready_value = False
         self.set_state(DevState.DISABLE)
@@ -828,9 +831,8 @@ class PicoPyServer(TangoServerPrototype):
 #
     @command(dtype_in=None, dtype_out=bool)
     def ready(self):
-        if not self.assert_picolog_open():
-            return False
         try:
+            self.assert_picolog_open()
             return self.picolog.ready()
         except KeyboardInterrupt:
             raise
@@ -840,8 +842,8 @@ class PicoPyServer(TangoServerPrototype):
 
     @command(dtype_in=int, dtype_out=bool)
     def _start(self, value=0):
-        self.assert_picolog_open()
         try:
+            self.assert_picolog_open()
             if value > 0:
                 if self.record_initiated:
                     msg = '%s Can not start - record in progress' % self.device_name
@@ -902,21 +904,29 @@ class PicoPyServer(TangoServerPrototype):
 
     def assert_picolog_open(self):
         if self.picolog.opened:
-            if self.picolog.last_status == pl1000.PICO_STATUS['PICO_OK'] or \
-                    self.picolog.last_status == pl1000.PICO_STATUS['PICO_BUSY']:
+            status = status_from_code(self.picolog.last_status)
+            if status == 'PICO_OK' or status == 'PICO_BUSY':
                 return True
-            if self.picolog.last_status == pl1000.PICO_STATUS['PICO_NOT_RESPONDING'] or \
-                    self.picolog.last_status == pl1000.PICO_STATUS['PICO_NOT_FOUND']:
+            if status == 'PICO_NOT_RESPONDING' or status == 'PICO_NOT_FOUND':
+                self.logger.info('Picolog disconnected')
                 self.picolog.opened = False
                 self.record_initiated = False
                 self.data_ready_value = False
                 self.reconnect()
-                return self.picolog.opened
+                if not self.picolog.opened:
+                    raise PicoPyServerError('Can not open Picolog')
+                return True
+            self.logger.warning('Wrong Picolog status %s ' % status)
+            if status == 'PICO_INVALID_PARAMETER':
+                return False
+            raise PicoPyServerError('Wrong Picolog status %s ' % status)
         else:
             self.record_initiated = False
             self.data_ready_value = False
             self.reconnect()
-            return self.picolog.opened
+            if not self.picolog.opened:
+                raise PicoPyServerError('Can not open Picolog')
+            return None
 
     def set_channel_properties(self, channel, props=None):
         try:
@@ -928,8 +938,6 @@ class PicoPyServer(TangoServerPrototype):
             if props is None:
                 props = {}
             prop = attrib.get_properties()
-            prop.standard_unit = self.picolog.scale
-            prop.max_value = self.picolog.max_adc
             try:
                 for p in props:
                     if hasattr(prop, p):
@@ -937,6 +945,7 @@ class PicoPyServer(TangoServerPrototype):
             except KeyboardInterrupt:
                 raise
             except:
+                log_exception()
                 pass
             attrib.set_properties(prop)
         except KeyboardInterrupt:
@@ -946,50 +955,58 @@ class PicoPyServer(TangoServerPrototype):
 
     def configure_channels(self):
         for i in range(1, 17):
-            self.set_channel_properties(name_from_number(i))
-            self.set_channel_properties(name_from_number(i, xy='x'),
-                                        {'display_unit': 1.0, 'standard_unit': 1.0,
-                                         'max_value': (self.picolog.points - 1) * self.picolog.sampling})
+            self.set_channel_properties(name_from_number(i), {'standard_unit': self.picolog.scale})
+            pr = {'display_unit': 1.0, 'standard_unit': 1.0}
+            mv = (self.picolog.points - 1) * self.picolog.sampling
+            if mv > 0:
+                pr['max_value'] = mv
+            self.set_channel_properties(name_from_number(i, xy='x'), pr)
         self.set_channel_properties(self.raw_data)
-        self.channel_record_time_us.set_write_value(self.config['channel_record_time_us'])
-        self.points_per_channel.set_write_value(self.config['points_per_channel'])
-        self.channels.set_write_value(self.config['channels'])
+        self.channel_record_time_us.set_write_value(int(self.config['channel_record_time_us']))
+        self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
+        self.channels.set_write_value(str(self.config['channels']))
         self.record_in_progress.set_write_value(self.record_initiated)
 
     def set_sampling(self):
-        self.assert_picolog_open()
-        channels_list = list_from_str(self.config.get('channels', '[1]'))
-        points = int(self.config.get('points_per_channel', 1000))
-        record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
-        self.picolog.set_timing(channels_list, points, record_us)
-        self.data_ready_value = False
-        self.config['points_per_channel'] = self.picolog.points
-        self.set_device_property('points_per_channel', str(self.config['points_per_channel']))
-        self.config['channel_record_time_us'] = self.picolog.record_us
-        self.set_device_property('channel_record_time_us', str(self.config['channel_record_time_us']))
+        try:
+            self.assert_picolog_open()
+            channels_list = list_from_str(self.config.get('channels', '[1]'))
+            points = int(self.config.get('points_per_channel', 1000))
+            record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
+            self.picolog.set_timing(channels_list, points, record_us)
+            self.data_ready_value = False
+            self.config['points_per_channel'] = self.picolog.points
+            self.set_device_property('points_per_channel', str(self.config['points_per_channel']))
+            self.config['channel_record_time_us'] = self.picolog.record_us
+            self.set_device_property('channel_record_time_us', str(self.config['channel_record_time_us']))
+        except:
+            log_exception(exc_info=False)
 
     def set_trigger(self):
-        self.assert_picolog_open()
-        # read trigger parameters
-        self.trigger_enabled = self.config.get('trigger_enabled', 0)
-        self.trigger_auto = self.config.get('trigger_auto', 0)
-        self.trigger_auto_ms = self.config.get('trigger_auto_ms', 0)
-        self.trigger_channel = self.config.get('trigger_channel', 1)
-        self.trigger_direction = self.config.get('trigger_direction', 0)
-        self.trigger_threshold = self.config.get('trigger_threshold', 2048)
-        self.trigger_hysteresis = self.config.get('trigger_hysteresis', 100)
-        self.trigger_delay = self.config.get('trigger_delay', 10.0)
-        # set trigger
-        self.picolog.set_trigger(self.trigger_enabled, self.trigger_channel,
-                                 self.trigger_direction, self.trigger_threshold,
-                                 self.trigger_hysteresis, self.trigger_delay,
-                                 self.trigger_auto, self.trigger_auto_ms)
+        try:
+            self.assert_picolog_open()
+            # read trigger parameters
+            self.trigger_enabled = self.config.get('trigger_enabled', 0)
+            self.trigger_auto = self.config.get('trigger_auto', 0)
+            self.trigger_auto_ms = self.config.get('trigger_auto_ms', 0)
+            self.trigger_channel = self.config.get('trigger_channel', 1)
+            self.trigger_direction = self.config.get('trigger_direction', 0)
+            self.trigger_threshold = self.config.get('trigger_threshold', 2048)
+            self.trigger_hysteresis = self.config.get('trigger_hysteresis', 100)
+            self.trigger_delay = self.config.get('trigger_delay', 10.0)
+            # set trigger
+            self.picolog.set_trigger(self.trigger_enabled, self.trigger_channel,
+                                     self.trigger_direction, self.trigger_threshold,
+                                     self.trigger_hysteresis, self.trigger_delay,
+                                     self.trigger_auto, self.trigger_auto_ms)
+        except:
+            log_exception(exc_info=False)
 
     def read(self):
         if not self.record_initiated:
             return False
-        self.assert_picolog_open()
         try:
+            self.assert_picolog_open()
             if self.picolog.ready():
                 self.picolog.read()
                 self.record_initiated = False
@@ -1038,7 +1055,10 @@ def looping():
         time.sleep(0.001)
         if time.time() - t0 > 1.0:
             t0 = time.time()
-            dev.assert_picolog_open()
+            try:
+                dev.assert_picolog_open()
+            except:
+                log_exception('Error: %s not opened' % dev.device_name, level=logging.WARNING, exc_info=False)
         if dev.record_initiated:
             try:
                 if dev.ready():

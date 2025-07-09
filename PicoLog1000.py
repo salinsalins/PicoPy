@@ -7,6 +7,7 @@ import logging
 
 import numpy as np
 
+from log_exception import log_exception
 from picosdk.constants import PICO_STATUS
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
 from picosdk.pl1000 import pl1000
@@ -14,6 +15,12 @@ from picosdk.functions import assert_pico_ok
 
 
 # from picosdk.functions import assert_pico_ok as library_assert_pico_ok
+
+def status_from_code(code):
+    for key in PICO_STATUS:
+        if PICO_STATUS[key] == code:
+            return key
+    return ''
 
 
 class PicoLog1000:
@@ -70,18 +77,21 @@ class PicoLog1000:
     #     pass
 
     def open(self):
-        self.t0 = time.time()
-        self.handle = ctypes.c_int16()
-        self.last_status = pl1000.pl1000OpenUnit(ctypes.byref(self.handle))
-        assert_pico_ok(self.last_status)
-        max_count = ctypes.c_uint16()
-        self.last_status = pl1000.pl1000MaxValue(self.handle, ctypes.byref(max_count))
-        assert_pico_ok(self.last_status)
-        self.max_adc = max_count.value
-        self.scale = self.range / self.max_adc
-        self.opened = True
-        self.logger.debug('PicoLog: Device has been opened')
-
+        try:
+            self.t0 = time.time()
+            self.handle = ctypes.c_int16()
+            self.last_status = pl1000.pl1000OpenUnit(ctypes.byref(self.handle))
+            assert_pico_ok(self.last_status)
+            max_count = ctypes.c_uint16()
+            self.last_status = pl1000.pl1000MaxValue(self.handle, ctypes.byref(max_count))
+            assert_pico_ok(self.last_status)
+            self.max_adc = max_count.value
+            self.scale = self.range / self.max_adc
+            self.opened = True
+            self.logger.debug('PicoLog: Device has been opened')
+        except:
+            self.opened = False
+            log_exception('Can not open picolog', exc_info=False)
     def assert_open(self):
         self.t0 = time.time()
         if self.handle is None or not self.opened:
@@ -102,7 +112,10 @@ class PicoLog1000:
         return True
 
     def get_info(self, request=None):
-        self.assert_open()
+        try:
+            self.assert_open()
+        except:
+            log_exception(exc_info=False)
         if isinstance(request, str):
             sources = {request: pl1000.PICO_INFO[request]}
         elif request is None:
