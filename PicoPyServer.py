@@ -872,8 +872,11 @@ class PicoPyServer(TangoServerPrototype):
 
     @command(dtype_in=None, dtype_out=bool)
     def start_recording(self):
+        if self.record_initiated:
+            self.logger.info("Start recoding refused - Record in progress")
+            return False
         self.apply_config()
-        self.stop_recording()
+        # self.stop_recording()
         return self._start()
 
     @command(dtype_in=None)
