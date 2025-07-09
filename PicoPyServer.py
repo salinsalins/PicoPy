@@ -6,7 +6,10 @@ PicoLog1000 series tango device server
 
 """
 import json
-import sys; sys.path.append('../TangoUtils')
+import sys;
+import time
+
+sys.path.append('../TangoUtils')
 
 import numpy
 import tango
@@ -102,6 +105,12 @@ class PicoPyServer(TangoServerPrototype):
                                    unit="", format="",
                                    doc="Is record operation in progress")
 
+    remained_time = attribute(label="remained_time", dtype=float,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ,
+                          unit="s", format="%f",
+                          doc="Time remainet till the end of pulse, seconds")
+
     data_ready = attribute(label="data_ready", dtype=bool,
                            display_level=DispLevel.OPERATOR,
                            access=AttrWriteType.READ,
@@ -140,6 +149,7 @@ class PicoPyServer(TangoServerPrototype):
                           access=AttrWriteType.READ,
                           unit="s", format="%f",
                           doc="Recording stop time - UNIX seconds")
+
     # !!!!!!!!!!!!!!!!!!!!!
     # Channel numbering starts from 1 !!! (according manufacturer manuals and API)
     # !!!!!!!!!!!!!!!!!!!!!
@@ -475,11 +485,13 @@ class PicoPyServer(TangoServerPrototype):
         self.trigger_hysteresis = 100   # ADC quanta
         self.trigger_delay = 10.0       # persent from the record
         # set logger and device proxy in super and then call self.set_config()
-        super().init_device()
+        super().init_device()       # call self.set_config()
         if self not in PicoPyServer.device_list:
             PicoPyServer.device_list.append(self)
         self.log_level.set_write_value(logging.getLevelName(self.logger.getEffectiveLevel()))
         self.configure_tango_logging()
+        self.pre = '%s %s ' % (self.device_name, self.device_type_str)
+        self.set_status('Initialized')
 
     def set_config(self):
         super().set_config()
@@ -487,7 +499,7 @@ class PicoPyServer(TangoServerPrototype):
             self.device_name = self.get_name()
             self.set_state(DevState.INIT)
             self.set_status('Initialization')
-            self.reconnect_enabled = self.config.get('auto_reconnect', False)
+            self.reconnect_enabled = self.config.get('auto_reconnect', True)
             # create PicoLog1000 device
             self.picolog = PicoLog1000()
             # change PicoLog1000 logger to class logger
@@ -503,12 +515,14 @@ class PicoPyServer(TangoServerPrototype):
             except KeyboardInterrupt:
                 raise
             except:
+                log_exception('Cannot determine number of channels, 16 will be set',exc_info=False)
                 self.max_channels = 16
             try:
                 self.bits = int(self.device_type_str[-4:-2])
             except KeyboardInterrupt:
                 raise
             except:
+                log_exception('Cannot determine number of bits, 12 will be set',exc_info=False)
                 self.bits = 12
             self.max_adc = 2 ** self.bits
             self.apply_config()
@@ -519,9 +533,9 @@ class PicoPyServer(TangoServerPrototype):
             self.set_status('PicoLog has been initialized successfully')
         except Exception as ex:
             self.init_result = ex
-            log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
+            msg = log_exception(self, 'Exception initiating PicoLog %s', self.device_name)
             self.set_state(DevState.FAULT)
-            self.set_status('Error initializing PicoLog')
+            self.set_status(msg)
             return False
         return True
 
@@ -531,13 +545,13 @@ class PicoPyServer(TangoServerPrototype):
         except KeyboardInterrupt:
             raise
         except:
-            pass
+            log_exception()
         try:
             self.picolog.close()
         except KeyboardInterrupt:
             raise
         except:
-            pass
+            log_exception()
         self.record_initiated = False
         self.data_ready_value = False
         self.set_state(DevState.DISABLE)
@@ -545,6 +559,9 @@ class PicoPyServer(TangoServerPrototype):
         msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
 
+    # ***********************************************************
+    #   Attribute R/W functions
+    #
     def read_picolog_type(self):
         return self.device_type_str
 
@@ -597,6 +614,11 @@ class PicoPyServer(TangoServerPrototype):
 
     def write_channel_record_time_us(self, value):
         last = self.config.get('channel_record_time_us', 1000000)
+        if self.record_initiated:
+            self.logger.info('Writing forbidden till the end of recording')
+            self.channel_record_time_us.set_write_value(last)
+            self.set_status('Writing forbidden till the end of recording')
+            return
         try:
             self.config['channel_record_time_us'] = int(value)
             self.set_sampling()
@@ -611,6 +633,11 @@ class PicoPyServer(TangoServerPrototype):
 
     def write_points_per_channel(self, value):
         last = self.config.get('points_per_channel', 1000)
+        if self.record_initiated:
+            self.logger.info('Writing forbidden till the end of recording')
+            self.channel_points_per_channel.set_write_value(last)
+            self.set_status('Writing forbidden till the end of recording')
+            return
         try:
             self.config['points_per_channel'] = int(value)
             self.set_sampling()
@@ -625,6 +652,11 @@ class PicoPyServer(TangoServerPrototype):
 
     def write_channels(self, value):
         last = self.config.get('channels', '[1]')
+        if self.record_initiated:
+            self.logger.info('Writing forbidden till the end of recording')
+            self.channels.set_write_value(last)
+            self.set_status('Writing forbidden till the end of recording')
+            return
         try:
             channels_list = list_from_str(str(value))
             channels_list = channels_list[:self.max_channels]
@@ -639,9 +671,14 @@ class PicoPyServer(TangoServerPrototype):
     def read_start_time(self):
         return self.picolog.recording_start_time
 
+    def read_remained_time(self):
+        v = self.picolog.recording_start_time + (self.picolog.record_us * 1e-6) - time.time()
+        return max(v, 0)
+
     def read_stop_time(self):
         return self.picolog.read_time
 
+    # read channel helper function
     def read_channel_data(self, channel: int, xy: str = 'y'):
         channel_name = name_from_number(channel, xy)
         if not hasattr(self, channel_name):
@@ -668,7 +705,6 @@ class PicoPyServer(TangoServerPrototype):
         channel_attribute.set_quality(AttrQuality.ATTR_VALID)
         return data
 
-    # read channel helper functions
     def read_chany01(self):
         return self.read_channel_data(1)
 
@@ -787,9 +823,13 @@ class PicoPyServer(TangoServerPrototype):
             self.logger.warning(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
 
+# ***********************************************************
+#   Commands
+#
     @command(dtype_in=None, dtype_out=bool)
     def ready(self):
-        self.assert_picolog_open()
+        if not self.assert_picolog_open():
+            return False
         try:
             return self.picolog.ready()
         except KeyboardInterrupt:
