@@ -989,13 +989,13 @@ class PicoPyServer(TangoServerPrototype):
             self.picolog.set_timing(channels_list, points, record_us)
             self.data_ready_value = False
 
-            if self.config['channel_record_time_us'] != self.picolog.record_us:
+            if self.config['channel_record_time_us'] != record_us:
                 self.channel_record_time_us.set_quality(AttrQuality.ATTR_INVALID)
                 # self.channel_record_time_us.set_write_value(int(self.config['channel_record_time_us']))
             self.config['channel_record_time_us'] = self.picolog.record_us
             self.properties['channel_record_time_us'] = self.config['channel_record_time_us']
 
-            if self.config['points_per_channel'] != self.picolog.points:
+            if self.config['points_per_channel'] != points:
                 self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
                 self.points_per_channel.set_quality(AttrQuality.ATTR_INVALID)
             self.config['points_per_channel'] = self.picolog.points
