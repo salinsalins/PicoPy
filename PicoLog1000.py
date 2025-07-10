@@ -153,22 +153,58 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000SetPulseWidth(self.handle, ctypes.c_int16(period), ctypes.c_int8(cycle))
         assert_pico_ok(self.last_status)
 
+    def check_limits(self, n_channels, points_per_channel, total_record_time):
+        flag = True
+        if not isinstance(n_channels, int):
+            nc = len(n_channels)
+        if nc <= 0 or nc > 16:
+            self.logger.error('Channels can not be < 1 or > 16')
+            return flag, n_channels, points_per_channel, total_record_time
+        total_points = nc * points_per_channel
+        if total_points > MAX_CAPTURE_SIZE:
+            self.logger.error('Too many points requested - truncated fo %s' % MAX_CAPTURE_SIZE)
+            points_per_channel = MAX_CAPTURE_SIZE // nc
+            total_points = nc * channel_points
+            flag = False
+        interval = float(total_record_time) / total_points
+        if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
+            flag = False
+            self.logger.warning('Requested recording is too fast - corrected to minimum')
+            if total_points <= US_LIMIT:
+                interval = 1.0
+            if total_points > US_LIMIT:
+                interval = 10.0
+            total_record_time = int(total_points * interval)
+        return flag, n_channels, points_per_channel, total_record_time
+
     def set_timing(self, channels, channel_points, channel_record_us):
         nc = len(channels)
-        total_points = nc * channel_points
-        interval = float(channel_record_us) / total_points
+        if nc < 0:
+            self.logger.error('Cannot be 0 or less channels')
+            return False
+        cp = channel_points
+        total_points = nc * cp
         if total_points > MAX_CAPTURE_SIZE:
-            self.logger.error('Too many points requested - ignored')
-            return False
+            self.logger.error('Too many points requested - truncated fo %s' % MAX_CAPTURE_SIZE)
+            cp = MAX_CAPTURE_SIZE / nc
+            total_points = nc * channel_points
+            # return False
+        interval = float(channel_record_us) / total_points
+        cr = channel_record_us
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
-            self.logger.error('Requested recording is too fast - ignored')
-            return False
+            self.logger.error('Requested recording is too fast - corrected to minimum')
+            if total_points <= US_LIMIT:
+                interval = 1.0
+            if total_points > US_LIMIT:
+                interval = 10.0
+            cr = total_points * int(interval)
+                # return False
         self.assert_open()
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
             cnls[i] = channels[i]
-        t_us = ctypes.c_uint32(channel_record_us)
-        n = ctypes.c_uint32(channel_points)
+        t_us = ctypes.c_uint32(cr)
+        n = ctypes.c_uint32(cp)
         self.last_status = pl1000.pl1000SetInterval(self.handle, ctypes.byref(t_us),
                                                     n, ctypes.byref(cnls), nc)
         assert_pico_ok(self.last_status)

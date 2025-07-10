@@ -664,9 +664,12 @@ class PicoPyServer(TangoServerPrototype):
             self.set_status('Writing forbidden till the end of recording')
             return
         try:
-            channels_list = list_from_str(str(value))
-            channels_list = channels_list[:self.max_channels]
+            last = list_from_str(self.config['channels'])
+            channels_list = list_from_str(str(value))[:self.max_channels]
             self.config['channels'] = str(channels_list)
+            # if len(last) != len(channels_list):
+            #     # correctly add/remove to preserve record length
+            #     pass
             self.set_sampling()
         except KeyboardInterrupt:
             raise
@@ -974,19 +977,30 @@ class PicoPyServer(TangoServerPrototype):
         self.channels.set_write_value(str(self.config['channels']))
         self.record_in_progress.set_write_value(self.record_initiated)
 
-    def set_sampling(self):
+    def set_sampling(self, channels_list=None, points=None, record_us=None):
         try:
             self.assert_picolog_open()
-            channels_list = list_from_str(self.config.get('channels', '[1]'))
-            points = int(self.config.get('points_per_channel', 1000))
-            record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
+            if channels_list is None:
+                channels_list = list_from_str(self.config.get('channels', '[1]'))
+            if points is None:
+                points = int(self.config.get('points_per_channel', 1000))
+            if record_us is None:
+                record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
             self.picolog.set_timing(channels_list, points, record_us)
             self.data_ready_value = False
-            self.config['points_per_channel'] = self.picolog.points
-            self.set_device_property('points_per_channel', str(self.config['points_per_channel']))
+
+            if self.config['channel_record_time_us'] != self.picolog.record_us:
+                self.channel_record_time_us.set_quality(AttrQuality.ATTR_INVALID)
+                # self.channel_record_time_us.set_write_value(int(self.config['channel_record_time_us']))
             self.config['channel_record_time_us'] = self.picolog.record_us
-            self.set_device_property('channel_record_time_us', str(self.config['channel_record_time_us']))
-            # self.channel_record_time_us.set_write_value(int(self.config['channel_record_time_us']))
+            self.properties['channel_record_time_us'] = self.config['channel_record_time_us']
+
+            if self.config['points_per_channel'] != self.picolog.points:
+                self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
+                self.points_per_channel.set_quality(AttrQuality.ATTR_INVALID)
+            self.config['points_per_channel'] = self.picolog.points
+            self.properties['points_per_channel'] = self.config['points_per_channel']
+
             # self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
         except:
             log_exception(exc_info=False)
