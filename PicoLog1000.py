@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import os
+import sys
 import time
 import ctypes
 import logging
 
 import numpy as np
 
+if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
+
+from config_logger import config_logger
 from log_exception import log_exception
 from picosdk.constants import PICO_STATUS
 from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
@@ -16,27 +20,21 @@ from picosdk.functions import assert_pico_ok
 MAX_CAPTURE_SIZE = 1000000
 US_LIMIT = 8096
 
-# from picosdk.functions import assert_pico_ok as library_assert_pico_ok
-
-def status_from_code(code):
-    for key in PICO_STATUS:
-        if PICO_STATUS[key] == code:
-            return key
-    return ''
-
-
 class PicoLog1000:
     # config_logger
-    logger = logging.getLogger(__qualname__)
-    logger.propagate = False
-    # logger.setLevel(logging.DEBUG)
-    logger_f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-    logger_log_formatter = logging.Formatter(logger_f_str, datefmt='%H:%M:%S')
-    logger_console_handler = logging.StreamHandler()
-    logger_console_handler.setFormatter(logger_log_formatter)
-    logger.addHandler(logger_console_handler)
+    # logger = logging.getLogger(__qualname__)
+    # logger.propagate = False
+    # # logger.setLevel(logging.DEBUG)
+    # logger_f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+    # logger_log_formatter = logging.Formatter(logger_f_str, datefmt='%H:%M:%S')
+    # logger_console_handler = logging.StreamHandler()
+    # logger_console_handler.setFormatter(logger_log_formatter)
+    # logger.addHandler(logger_console_handler)
 
     def __init__(self):
+        self.logger = config_logger()
+        self.logger.setLevel(logging.DEBUG)
+        #
         self.handle = None
         self.opened = False
         self.last_status = None
@@ -45,9 +43,9 @@ class PicoLog1000:
         self.max_adc = 4096  # [V] max ADC value corresponding to max input voltage
         self.scale = self.range / self.max_adc  # Volts per ADC quantum
         self.channels = []
-        self.points = 0
-        self.record_us = 0
-        self.sampling = 0.0
+        self.points = 1
+        self.record_us = 10
+        self.sampling = 0.010
         #
         self.trigger_enabled = 0
         self.trigger_channel = "PL1000_CHANNEL_1"
@@ -66,25 +64,23 @@ class PicoLog1000:
         self.info = {}
         #
         self.recording_start_time = 0.0
+        self.recording_end_time = 0.0
+        self.record_in_progress = False
         self.read_time = 0.0
-        self.t0 = time.time()
         #
         self.reconnect_enabled = False
-        self.reconnect_timeout = 0.0
+        self.reconnect_timeout = 1.0
         self.reconnect_count = 3
-        #
-        self.logger.setLevel(logging.DEBUG)
 
     # def __del__(self):
     #     pass
 
     def open(self):
         try:
-            self.t0 = time.time()
             self.handle = ctypes.c_int16()
             self.last_status = pl1000.pl1000OpenUnit(ctypes.byref(self.handle))
             assert_pico_ok(self.last_status)
-            max_count = ctypes.c_uint16()
+            max_count = ctypes.c_uint16(0)
             self.last_status = pl1000.pl1000MaxValue(self.handle, ctypes.byref(max_count))
             assert_pico_ok(self.last_status)
             self.max_adc = max_count.value
@@ -94,8 +90,8 @@ class PicoLog1000:
         except:
             self.opened = False
             log_exception('Can not open picolog', exc_info=False)
+
     def assert_open(self):
-        self.t0 = time.time()
         if self.handle is None or not self.opened:
             raise ClosedDeviceError("PicoLog is not opened")
         # !!!!
@@ -148,10 +144,29 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000SetDo(self.handle, ctypes.c_int16(do_value), ctypes.c_int16(do_number))
         assert_pico_ok(self.last_status)
 
+    def get_single_value(self, channel):
+        self.assert_open()
+        result = ctypes.c_uint16(0)
+        self.last_status = pl1000.pl1000GetSingle(self.handle, ctypes.c_int16(channel), ctypes.byref(result))
+        assert_pico_ok(self.last_status)
+        return result.value
+
+    def get_max_value(self):
+        self.assert_open()
+        result = ctypes.c_uint16(0)
+        self.last_status = pl1000.pl1000GetSingle(self.handle, ctypes.byref(result))
+        assert_pico_ok(self.last_status)
+        return result.value
+
     def set_pulse_width(self, period, cycle):
         self.assert_open()
         self.last_status = pl1000.pl1000SetPulseWidth(self.handle, ctypes.c_int16(period), ctypes.c_int8(cycle))
         assert_pico_ok(self.last_status)
+
+    def check_pico_ok(self, status=None):
+        if status is None:
+            status = self.last_status
+        return status == PICO_STATUS['PICO_OK']
 
     def check_limits(self, n_channels, points_per_channel, total_record_time):
         flag = True
@@ -183,22 +198,21 @@ class PicoLog1000:
             self.logger.error('Cannot be 0 or less channels')
             return False
         cp = channel_points
-        total_points = nc * cp
+        total_points = nc * channel_points
         if total_points > MAX_CAPTURE_SIZE:
             self.logger.error('Too many points requested - truncated fo %s' % MAX_CAPTURE_SIZE)
-            cp = MAX_CAPTURE_SIZE / nc
-            total_points = nc * channel_points
+            cp = MAX_CAPTURE_SIZE // nc
+            total_points = nc * cp
             # return False
         interval = float(channel_record_us) / total_points
         cr = channel_record_us
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
-            self.logger.error('Requested recording is too fast - corrected to minimum')
+            self.logger.error('Requested recording is too fast - corrected')
             if total_points <= US_LIMIT:
-                interval = 1.0
+                interval = 1
             if total_points > US_LIMIT:
-                interval = 10.0
-            cr = total_points * int(interval)
-                # return False
+                interval = 10
+            cr = total_points * interval
         self.assert_open()
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
@@ -218,7 +232,7 @@ class PicoLog1000:
             self.logger.warning('PicoLog: channel record time has been corrected from %s to %s us',
                                 channel_record_us, self.record_us)
         self.sampling = (0.001 * self.record_us) / self.points
-        self.logger.debug('PicoLog: Timing: %s channels %s; sampling %s ms; %s points; duration %s us',
+        self.logger.debug('PicoLog Timing: %s channels %s; sampling %s ms; %s points; duration %s us',
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
         self.data = np.empty((len(self.channels), self.points), dtype=np.uint16, order='F')
@@ -228,14 +242,10 @@ class PicoLog1000:
         self.times = np.empty(self.data.shape, dtype=np.float32)
         for i in range(len(self.channels)):
             self.times[i, :] = self.t + (i * self.sampling / len(self.channels))
+
         if self.points != channel_points or self.record_us != channel_record_us:
             return False
         return True
-
-    def get_last_status(self, stat=None):
-        if stat is None:
-            stat = self.last_status
-        return PICO_STATUS.get(stat, "UNKNOWN")
 
     def start_recording(self, n_values=None, mode="BM_SINGLE"):
         # start data recording
