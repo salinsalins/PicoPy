@@ -263,12 +263,17 @@ class PicoLog1000:
         self.last_status = pl1000.pl1000Run(self.handle, n, m)
         assert_pico_ok(self.last_status)
         self.recording_start_time = time.time()
+        self.overflow = 0
+        self.recording_end_time = 0.0
 
     def ready(self):
         self.assert_open()
         ready = ctypes.c_int16(0)
         self.last_status = pl1000.pl1000Ready(self.handle, ctypes.byref(ready))
         assert_pico_ok(self.last_status)
+        if ready.value:
+            if self.recording_end_time == 0.0:
+                self.recording_end_time = time.time()
         return ready.value
 
     def wait_result(self, timeout=None, use_timer=None):

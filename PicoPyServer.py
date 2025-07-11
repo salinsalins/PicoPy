@@ -110,11 +110,11 @@ class PicoPyServer(TangoServerPrototype):
                                    unit="", format="",
                                    doc="Is record operation in progress")
 
-    remained_time = attribute(label="remained_time", dtype=float,
-                          display_level=DispLevel.OPERATOR,
-                          access=AttrWriteType.READ,
-                          unit="s", format="%f",
-                          doc="Time remainet till the end of pulse, seconds")
+    # remained_time = attribute(label="remained_time", dtype=float,
+    #                       display_level=DispLevel.OPERATOR,
+    #                       access=AttrWriteType.READ,
+    #                       unit="s", format="%f",
+    #                       doc="Time remained till the end of pulse, seconds")
 
     data_ready = attribute(label="data_ready", dtype=bool,
                            display_level=DispLevel.OPERATOR,
@@ -684,6 +684,8 @@ class PicoPyServer(TangoServerPrototype):
         return self.picolog.recording_start_time
 
     def read_remained_time(self):
+        if not self.record_initiated:
+            return 0.0
         v = self.picolog.recording_start_time + (self.picolog.record_us * 1e-6) - time.time()
         return max(v, 0)
 
@@ -861,6 +863,7 @@ class PicoPyServer(TangoServerPrototype):
             self.picolog.start_recording()
             self.record_initiated = True
             self.data_ready_value = False
+            self.stop_time = 0.0
             self.set_state(DevState.RUNNING)
             self.set_status('Recording is in progress')
             msg = '%s Recording started' % self.device_name
