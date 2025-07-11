@@ -6,8 +6,10 @@ PicoLog1000 series tango device server
 
 """
 import json
-import sys;
+import sys
 import time
+
+from picosdk.constants import PICO_STATUS_LOOKUP
 
 sys.path.append('../TangoUtils')
 
@@ -156,7 +158,7 @@ class PicoPyServer(TangoServerPrototype):
     # !!!!!!!!!!!!!!!!!!!!!
     # Channel numbering starts from 1 !!! (according manufacturer manuals and API)
     # !!!!!!!!!!!!!!!!!!!!!
-    # channels for recorded ADC samples 16 bit unsigned integer
+    # channels for recorded ADC samples 16-bit unsigned integer
     chany01 = attribute(label="Channel_01", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -317,7 +319,7 @@ class PicoPyServer(TangoServerPrototype):
                         unit="V", format="%5.3f",
                         doc="Channel 16 data. 16 bit integers. Volts = data * standard_units")
 
-    # channels for ADC times 32 bit floats in ms
+    # channels for ADC times 32-bit floats in ms
     chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
                         min_value=0.0,
                         max_dim_x=MAX_DATA_ARRAY_SIZE,
@@ -914,7 +916,7 @@ class PicoPyServer(TangoServerPrototype):
 
     def assert_picolog_open(self):
         if self.picolog.opened:
-            status = status_from_code(self.picolog.last_status)
+            status = PICO_STATUS_LOOKUP.get(self.picolog.last_status, 'UNKNOWN')
             if status == 'PICO_OK' or status == 'PICO_BUSY':
                 return True
             if status == 'PICO_NOT_RESPONDING' or status == 'PICO_NOT_FOUND':
