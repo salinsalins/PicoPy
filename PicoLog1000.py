@@ -265,6 +265,7 @@ class PicoLog1000:
         self.recording_start_time = time.time()
         self.overflow = 0
         self.recording_end_time = 0.0
+        self.read_time = 0.0
 
     def ready(self):
         self.assert_open()

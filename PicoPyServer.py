@@ -690,7 +690,7 @@ class PicoPyServer(TangoServerPrototype):
         return max(v, 0)
 
     def read_stop_time(self):
-        return self.picolog.read_time
+        return self.picolog.recording_end_time
 
     # read channel helper function
     def read_channel_data(self, channel: int, xy: str = 'y'):
