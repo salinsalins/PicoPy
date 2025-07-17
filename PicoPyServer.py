@@ -6,12 +6,12 @@ PicoLog1000 series tango device server
 
 """
 import json
-import sys
+import sys, os
 import time
 
 from picosdk.constants import PICO_STATUS_LOOKUP
 
-sys.path.append('../TangoUtils')
+if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
 
 import numpy
 import tango
@@ -60,6 +60,7 @@ class PicoPyServer(TangoServerPrototype):
     server_version_value = '4.1'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
+    default_config = {'channel_record_time_us': 100000, 'points_per_channel': 1000, 'channels': '[1]'}
 
     # scalar attributes
     picolog_type = attribute(label="type", dtype=str,
@@ -520,14 +521,14 @@ class PicoPyServer(TangoServerPrototype):
             except KeyboardInterrupt:
                 raise
             except:
-                log_exception('Cannot determine number of channels, 16 will be set',exc_info=False)
+                self.logger.info('Cannot determine number of channels, 16 will be set')
                 self.max_channels = 16
             try:
                 self.bits = int(self.device_type_str[-4:-2])
             except KeyboardInterrupt:
                 raise
             except:
-                log_exception('Cannot determine number of bits, 12 will be set',exc_info=False)
+                self.logger.info('Cannot determine number of bits, 12 will be set')
                 self.bits = 12
             self.max_adc = 2 ** self.bits
             self.read_config_from_properties()
@@ -889,7 +890,7 @@ class PicoPyServer(TangoServerPrototype):
 
     @command(dtype_in=None)
     def apply_config(self):
-        self.read_config_from_properties()
+        self.read_config_from_properties(default=PicoPyServer.default_config)
         # set channels for measurements, sampling interval, number of points for channel, creates data arrays
         self.set_sampling()
         # set additional properties for channels:
