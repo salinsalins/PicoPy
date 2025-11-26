@@ -57,7 +57,7 @@ class PicoPyServerError(Exception):
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '4.1'
+    server_version_value = '4.2'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
     default_config = {'channel_record_time_us': 100000, 'points_per_channel': 1000, 'channels': '[1]'}
@@ -643,7 +643,7 @@ class PicoPyServer(TangoServerPrototype):
         last = self.config.get('points_per_channel', 1000)
         if self.record_initiated:
             self.logger.info('Writing forbidden till the end of recording')
-            self.channel_points_per_channel.set_write_value(last)
+            self.points_per_channel.set_write_value(last)
             self.set_status('Writing forbidden till the end of recording')
             return
         try:
