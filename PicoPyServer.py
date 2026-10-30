@@ -69,7 +69,7 @@ class PicoPyServer(TangoServerPrototype):
                              unit="", format="%s",
                              doc="Type of PicoLog1000 series device")
 
-    info = attribute(label="info", dtype=str,
+    picolog_info = attribute(label="picolog_info", dtype=str,
                      display_level=DispLevel.EXPERT,
                      access=AttrWriteType.READ,
                      unit="", format="%s",
@@ -111,11 +111,11 @@ class PicoPyServer(TangoServerPrototype):
                                    unit="", format="",
                                    doc="Is record operation in progress")
 
-    # remained_time = attribute(label="remained_time", dtype=float,
-    #                       display_level=DispLevel.OPERATOR,
-    #                       access=AttrWriteType.READ,
-    #                       unit="s", format="%f",
-    #                       doc="Time remained till the end of pulse, seconds")
+    time_shift = attribute(label="star_time_shift", dtype=str,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ_WRITE,
+                          unit="", format="%s",
+                          doc="Time shift for all counts, seconds")
 
     data_ready = attribute(label="data_ready", dtype=bool,
                            display_level=DispLevel.OPERATOR,
@@ -169,7 +169,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 01 data. 16 bit integers. Volts = data * standard_units")
-
     chany02 = attribute(label="Channel_02", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -179,7 +178,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 02 data. 16 bit integers. Volts = data * standard_units")
-
     chany03 = attribute(label="Channel_03", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -189,7 +187,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 03 data. 16 bit integers. Volts = data * standard_units")
-
     chany04 = attribute(label="Channel_04", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -199,7 +196,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 04 data. 16 bit integers. Volts = data * standard_units")
-
     chany05 = attribute(label="Channel_05", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -209,7 +205,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 05 data. 16 bit integers. Volts = data * standard_units")
-
     chany06 = attribute(label="Channel_06", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -219,7 +214,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 06 data. 16 bit integers. Volts = data * standard_units")
-
     chany07 = attribute(label="Channel_07", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -229,7 +223,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 07 data. 16 bit integers. Volts = data * standard_units")
-
     chany08 = attribute(label="Channel_08", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -239,7 +232,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 08 data. 16 bit integers. Volts = data * standard_units")
-
     chany09 = attribute(label="Channel_09", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -249,7 +241,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 09 data. 16 bit integers. Volts = data * standard_units")
-
     chany10 = attribute(label="Channel_10", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -259,7 +250,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 10 data. 16 bit integers. Volts = data * standard_units")
-
     chany11 = attribute(label="Channel_11", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -269,7 +259,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 11 data. 16 bit integers. Volts = data * standard_units")
-
     chany12 = attribute(label="Channel_12", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -279,7 +268,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 12 data. 16 bit integers. Volts = data * standard_units")
-
     chany13 = attribute(label="Channel_13", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -289,7 +277,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 13 data. 16 bit integers. Volts = data * standard_units")
-
     chany14 = attribute(label="Channel_14", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -299,7 +286,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 14 data. 16 bit integers. Volts = data * standard_units")
-
     chany15 = attribute(label="Channel_15", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -309,7 +295,6 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 15 data. 16 bit integers. Volts = data * standard_units")
-
     chany16 = attribute(label="Channel_16", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -475,6 +460,9 @@ class PicoPyServer(TangoServerPrototype):
         self.picolog = None
         self.device_type_str = "Unknown PicoLog device"
         self.device_name = ''
+        self.time_shift_value = ''
+        self.time_shift_time = 0.0
+        self.time_shift_dp = None
         self.record_initiated = False
         self.data_ready_value = False
         self.init_result = None
@@ -572,8 +560,14 @@ class PicoPyServer(TangoServerPrototype):
     def read_picolog_type(self):
         return self.device_type_str
 
-    def read_info(self):
+    def read_picolog_info(self):
         return str(self.picolog.info)
+
+    def read_time_shift(self):
+        return self.time_shift_value
+
+    def write_time_shift(self, value):
+        self.time_shift_value = value
 
     def read_ping(self):
         try:
