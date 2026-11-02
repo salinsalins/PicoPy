@@ -9,6 +9,7 @@ import json
 import sys, os
 import time
 
+from TangoUtils import split_attribute_name
 from picosdk.constants import PICO_STATUS_LOOKUP
 
 if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
@@ -57,7 +58,7 @@ class PicoPyServerError(Exception):
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '4.2'
+    server_version_value = '5.0'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
     default_config = {'channel_record_time_us': 100000, 'points_per_channel': 1000, 'channels': '[1]'}
@@ -564,10 +565,23 @@ class PicoPyServer(TangoServerPrototype):
         return str(self.picolog.info)
 
     def read_time_shift(self):
-        return self.time_shift_value
+        self.time_shift_value = self.config.get('time_shift', '0.0')
+        self.time_shift_time = 0.0
+        try:
+            self.time_shift_time = float(self.time_shift_value)
+        except:
+            try:
+                dev, attr = split_attribute_name(self.time_shift_value)
+                self.time_shift_dp = tango.DeviceProxy(dev)
+                self.time_shift_time = float(self.time_shift_dp.read(attr))
+            except:
+                log_exception('Wrong format for time_shift or device is unreadble')
+        return str(self.time_shift_time)
 
     def write_time_shift(self, value):
         self.time_shift_value = value
+        self.config['time_shift'] = self.time_shift_value
+        self.read_time_shift() 
 
     def read_ping(self):
         try:
@@ -707,7 +721,7 @@ class PicoPyServer(TangoServerPrototype):
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
-            data = self.picolog.times[channel_index, :]
+            data = self.picolog.times[channel_index, :] + float(self.read_time_shift())
         else:
             data = self.picolog.data[channel_index, :]
         self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
