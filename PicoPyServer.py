@@ -574,8 +574,12 @@ class PicoPyServer(TangoServerPrototype):
                 dev, attr = split_attribute_name(self.time_shift_value)
                 self.time_shift_dp = tango.DeviceProxy(dev)
                 value = self.time_shift_dp.read_attribute(attr).value
-                self.logger.debug(f'Read value form {self.time_shift_value} -> {value}')
-                self.time_shift_time = float(self.time_shift_dp.read_attribute(attr).value)              
+                self.logger.debug(f'Value form {self.time_shift_value} -> {value}')
+                fvalue = (self.picolog.recording_end_time - float(self.time_shift_dp.read_attribute(attr).value) - self.picolog.record_us * 1e-6) * 1e3
+                if fvalue < 3.6e6:
+                    self.time_shift_time = fvalue * 1000. # convert to ms
+                else:
+                    self.logger.debug(f'Correction time too big {fvalue}')
             except:
                 log_exception('Wrong format for time_shift or device is unreadble')
         return str(self.time_shift_time)
@@ -724,7 +728,7 @@ class PicoPyServer(TangoServerPrototype):
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
-            data = self.picolog.times[channel_index, :] + float(self.read_time_shift())
+            data = self.picolog.times[channel_index, :] + self.read_time_time 
         else:
             data = self.picolog.data[channel_index, :]
         self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
@@ -910,7 +914,6 @@ class PicoPyServer(TangoServerPrototype):
         self.set_trigger()
         self.time_shift_value = self.config.get('time_shift', '0.0')
         self.time_shift.set_write_value(self.time_shift_value)
-
 
     @command(dtype_in=None)
     def stop_recording(self):
