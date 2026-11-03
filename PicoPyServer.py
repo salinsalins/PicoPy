@@ -728,7 +728,7 @@ class PicoPyServer(TangoServerPrototype):
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
-            data = self.picolog.times[channel_index, :] + self.read_time_time 
+            data = self.picolog.times[channel_index, :] + float(self.read_time_shift()) 
         else:
             data = self.picolog.data[channel_index, :]
         self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
