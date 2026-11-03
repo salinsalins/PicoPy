@@ -588,7 +588,7 @@ class PicoPyServer(TangoServerPrototype):
         self.time_shift_value = value
         self.config['time_shift'] = self.time_shift_value
         self.write_config_to_properties()
-        self.read_tim 
+        self.read_time_shift() 
 
     def read_ping(self):
         try:
