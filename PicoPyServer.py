@@ -9,7 +9,6 @@ import json
 import sys, os
 import time
 
-from TangoUtils import split_attribute_name
 from picosdk.constants import PICO_STATUS_LOOKUP
 
 if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
@@ -21,6 +20,7 @@ from tango.server import attribute, command
 
 from TangoServerPrototype import TangoServerPrototype
 from log_exception import log_exception
+from TangoUtils import split_attribute_name
 
 
 from PicoLog1000 import *
@@ -112,11 +112,11 @@ class PicoPyServer(TangoServerPrototype):
                                    unit="", format="",
                                    doc="Is record operation in progress")
 
-    time_shift = attribute(label="star_time_shift", dtype=str,
+    time_shift = attribute(label="start_time_shift", dtype=str,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ_WRITE,
-                          unit="", format="%s",
-                          doc="Time shift for all counts, seconds")
+                          unit="ms", format="%s",
+                          doc="Time shift for all counts, ms")
 
     data_ready = attribute(label="data_ready", dtype=bool,
                            display_level=DispLevel.OPERATOR,
@@ -573,7 +573,9 @@ class PicoPyServer(TangoServerPrototype):
             try:
                 dev, attr = split_attribute_name(self.time_shift_value)
                 self.time_shift_dp = tango.DeviceProxy(dev)
-                self.time_shift_time = float(self.time_shift_dp.read(attr))
+                value = self.time_shift_dp.read_attribute(attr).value
+                self.logger.debug(f'Read value form {self.time_shift_value} -> {value}')
+                self.time_shift_time = float(self.time_shift_dp.read_attribute(attr).value)              
             except:
                 log_exception('Wrong format for time_shift or device is unreadble')
         return str(self.time_shift_time)
@@ -581,7 +583,8 @@ class PicoPyServer(TangoServerPrototype):
     def write_time_shift(self, value):
         self.time_shift_value = value
         self.config['time_shift'] = self.time_shift_value
-        self.read_time_shift() 
+        self.write_config_to_properties()
+        self.read_tim 
 
     def read_ping(self):
         try:
@@ -905,6 +908,9 @@ class PicoPyServer(TangoServerPrototype):
         self.configure_channels()
         # set trigger
         self.set_trigger()
+        self.time_shift_value = self.config.get('time_shift', '0.0')
+        self.time_shift.set_write_value(self.time_shift_value)
+
 
     @command(dtype_in=None)
     def stop_recording(self):
