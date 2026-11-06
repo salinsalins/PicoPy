@@ -566,22 +566,27 @@ class PicoPyServer(TangoServerPrototype):
 
     def read_time_shift(self):
         self.time_shift_value = self.config.get('time_shift', '0.0')
+        self.logger.debug(f'read time shift value {self.time_shift_value}')
         self.time_shift_time = 0.0
+        fvalue = 0.0        
+        self.logger.debug(f'read time shift value 2 {self.time_shift_time}')
         try:
             self.time_shift_time = float(self.time_shift_value)
+            self.logger.debug(f'read time shift value 3 {self.time_shift_time}')
         except:
             try:
                 dev, attr = split_attribute_name(self.time_shift_value)
                 self.time_shift_dp = tango.DeviceProxy(dev)
                 value = self.time_shift_dp.read_attribute(attr).value
                 self.logger.debug(f'Value form {self.time_shift_value} -> {value}')
-                fvalue = (self.picolog.recording_end_time - float(self.time_shift_dp.read_attribute(attr).value) - self.picolog.record_us * 1e-6) * 1e3
-                if fvalue < 3.6e6:
+                fvalue = (self.picolog.recording_end_time - float(value) - self.picolog.record_us * 1e-6)
+                if abs(fvalue) < 3.6e3:
                     self.time_shift_time = fvalue * 1000. # convert to ms
                 else:
                     self.logger.debug(f'Correction time too big {fvalue}')
             except:
                 log_exception('Wrong format for time_shift or device is unreadble')
+        self.logger.debug(f'time shift time {self.time_shift_time} {self.picolog.record_us * 1e-6} {fvalue}')
         return str(self.time_shift_time)
 
     def write_time_shift(self, value):
@@ -913,6 +918,7 @@ class PicoPyServer(TangoServerPrototype):
         # set trigger
         self.set_trigger()
         self.time_shift_value = self.config.get('time_shift', '0.0')
+        self.logger.debug('from properties %s' % self.time_shift_value)
         self.time_shift.set_write_value(self.time_shift_value)
 
     @command(dtype_in=None)
