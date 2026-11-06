@@ -25,6 +25,7 @@ from TangoUtils import split_attribute_name
 
 from PicoLog1000 import *
 
+import debugpy
 
 def list_from_str(input_str):
     try:
@@ -52,6 +53,7 @@ def name_from_number(n: int, xy='y'):
 MAX_DATA_ARRAY_SIZE = 1000000
 MAX_ADC_VALUE = 4095
 MAX_ADC_CHANNELS = 16
+RECONNECT_WAIT = 5.0
 
 class PicoPyServerError(Exception):
     pass
@@ -157,10 +159,9 @@ class PicoPyServer(TangoServerPrototype):
                           unit="s", format="%f",
                           doc="Recording stop time - UNIX seconds")
 
-    # !!!!!!!!!!!!!!!!!!!!!
+    # region Y channels
     # Channel numbering starts from 1 !!! (according manufacturer manuals and API)
-    # !!!!!!!!!!!!!!!!!!!!!
-    # channels for recorded ADC samples 16-bit unsigned integer
+    # channels for recorded ADC samples [ADC quantae] --  16-bit unsigned integers
     chany01 = attribute(label="Channel_01", dtype=[numpy.uint16],
                         min_value=0,
                         max_value=MAX_ADC_VALUE,
@@ -305,8 +306,10 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="V", format="%5.3f",
                         doc="Channel 16 data. 16 bit integers. Volts = data * standard_units")
+    # endregion
 
-    # channels for ADC times 32-bit floats in ms
+    # region X channels
+    # channels for ADC count times [ms]  --  32-bit floats
     chanx01 = attribute(label="Channel_01_times", dtype=[numpy.float32],
                         min_value=0.0,
                         max_dim_x=MAX_DATA_ARRAY_SIZE,
@@ -435,6 +438,7 @@ class PicoPyServer(TangoServerPrototype):
                         access=AttrWriteType.READ,
                         unit="ms", format="%5.3f",
                         doc="Times for channel 16 counts. 32 bit floats in ms")
+    # endregion
 
     # raw data for all channels
     raw_data = attribute(label="raw_data", dtype=[[numpy.uint16]],
@@ -442,17 +446,17 @@ class PicoPyServer(TangoServerPrototype):
                          max_dim_x=MAX_DATA_ARRAY_SIZE,
                          min_value=0,
                          max_value=MAX_ADC_VALUE,
-                         display_level=DispLevel.OPERATOR,
+                         display_level=DispLevel.EXPERT,
                          access=AttrWriteType.READ,
                          unit="V", format="%f",
-                         doc="Raw data from ADC for all channels. 16 bit integers, converted to Volts by standard_units")
+                         doc="Raw data from ADC for all channels. 16 bit integers, Volts = data * standard_units")
 
     # timings for all  channels 32-bit floats in ms
     times = attribute(label="times", dtype=[[numpy.float32]],
                       max_dim_y=MAX_ADC_CHANNELS,
                       max_dim_x=MAX_DATA_ARRAY_SIZE,
                       min_value=0.0,
-                      display_level=DispLevel.OPERATOR,
+                      display_level=DispLevel.EXPERT,
                       access=AttrWriteType.READ,
                       unit="ms", format="%f",
                       doc="ADC acquisition times for all channels. 32 bit floats in ms")
@@ -562,31 +566,37 @@ class PicoPyServer(TangoServerPrototype):
         return self.device_type_str
 
     def read_picolog_info(self):
-        return str(self.picolog.info)
+        result = str(self.picolog.info)
+        result = result.replace(r'\x00', '')
+        return result
 
     def read_time_shift(self):
+        # debugpy.debug_this_thread()
         self.time_shift_value = self.config.get('time_shift', '0.0')
-        self.logger.debug(f'read time shift value {self.time_shift_value}')
         self.time_shift_time = 0.0
         fvalue = 0.0        
-        self.logger.debug(f'read time shift value 2 {self.time_shift_time}')
         try:
             self.time_shift_time = float(self.time_shift_value)
-            self.logger.debug(f'read time shift value 3 {self.time_shift_time}')
         except:
             try:
                 dev, attr = split_attribute_name(self.time_shift_value)
                 self.time_shift_dp = tango.DeviceProxy(dev)
-                value = self.time_shift_dp.read_attribute(attr).value
-                self.logger.debug(f'Value form {self.time_shift_value} -> {value}')
-                fvalue = (self.picolog.recording_end_time - float(value) - self.picolog.record_us * 1e-6)
+                t_0 = time.time()
+                result = self.time_shift_dp.read_attribute(attr)
+                t_1 = time.time()
+                value = result.value
+                t_a = result.time.totime()
+                deltat = t_a - (t_0 + t_1)/2.
+                # self.logger.debug(f'Form attribute {self.time_shift_value}: value {value} time: {t_a} reading time: {t_1 - t_0} deltat: {delta}')
+                self.logger.debug(f'Clock difference  {deltat * 1e3} ms')
+                fvalue = self.picolog.recording_end_time - float(value) - self.picolog.record_us * 1e-6 + deltat
                 if abs(fvalue) < 3.6e3:
                     self.time_shift_time = fvalue * 1000. # convert to ms
                 else:
                     self.logger.debug(f'Correction time too big {fvalue}')
             except:
                 log_exception('Wrong format for time_shift or device is unreadble')
-        self.logger.debug(f'time shift time {self.time_shift_time} {self.picolog.record_us * 1e-6} {fvalue}')
+        # self.logger.debug(f'time shift time {self.time_shift_time} {self.picolog.record_us * 1e-6} {fvalue}')
         return str(self.time_shift_time)
 
     def write_time_shift(self, value):
@@ -733,13 +743,15 @@ class PicoPyServer(TangoServerPrototype):
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
-            data = self.picolog.times[channel_index, :] + float(self.read_time_shift()) 
+            trigger_offset = self.read_read_channel_record_time_us() * 1e3 / self.read_trigger() * self.read_points_per_channel()
+            data = self.picolog.times[channel_index, :] - trigger_offset + float(self.read_time_shift()) 
         else:
             data = self.picolog.data[channel_index, :]
         self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
         channel_attribute.set_quality(AttrQuality.ATTR_VALID)
         return data
 
+    # region chany read functions
     def read_chany01(self):
         return self.read_channel_data(1)
 
@@ -787,7 +799,9 @@ class PicoPyServer(TangoServerPrototype):
 
     def read_chany16(self):
         return self.read_channel_data(16)
+    # endregion
 
+    # region chanx read functions
     def read_chanx01(self):
         return self.read_channel_data(1, xy='x')
 
@@ -835,6 +849,7 @@ class PicoPyServer(TangoServerPrototype):
 
     def read_chanx16(self):
         return self.read_channel_data(16, xy='x')
+    # endregion
 
     def read_raw_data(self):
         if self.data_ready_value:
@@ -842,9 +857,9 @@ class PicoPyServer(TangoServerPrototype):
             self.raw_data.set_quality(AttrQuality.ATTR_VALID)
             return self.picolog.data
         else:
-            self.raw_data.set_quality(AttrQuality.ATTR_INVALID)
             msg = '%s Data is not ready' % self.device_name
             self.logger.warning(msg)
+            self.raw_data.set_quality(AttrQuality.ATTR_INVALID)
             return numpy.zeros(0, dtype=numpy.uint16)
 
     def read_times(self):
@@ -858,9 +873,9 @@ class PicoPyServer(TangoServerPrototype):
             self.logger.warning(msg)
             return numpy.zeros(0, dtype=numpy.uint16)
 
-# ***********************************************************
-#   Commands
-#
+    # ***********************************************************
+    #   Commands
+    #
     @command(dtype_in=None, dtype_out=bool)
     def ready(self):
         try:
@@ -1079,15 +1094,16 @@ class PicoPyServer(TangoServerPrototype):
 
     def reconnect(self):
         if not self.reconnect_enabled:
+            self.logger.info('Reconnection disabled')
             return
-        self.reconnect_count -= 1
-        if self.reconnect_count > 0:
-            return
+        # self.reconnect_count -= 1
+        # if self.reconnect_count > 0:
+            # return
         if time.time() - self.reconnect_timeout <= 0.0:
             return
         self.logger.debug('Reconnecting ...')
-        self.reconnect_count = 3
-        self.reconnect_timeout = time.time() + 5.0
+        # self.reconnect_count = 3
+        self.reconnect_timeout = time.time() + RECONNECT_WAIT
         self.delete_device()
         self.init_device()
         if self.picolog.opened:
@@ -1127,8 +1143,8 @@ def looping():
 
 
 def post_init_callback(server: PicoPyServer):
-    server.logger.debug('enter')
-    util = server.Util()
+    # server.logger.debug('enter')
+    # util = server.Util()
     pass
 
 

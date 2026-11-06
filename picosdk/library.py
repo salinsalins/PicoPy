@@ -11,7 +11,7 @@ from __future__ import print_function
 
 import os
 import sys
-from ctypes import c_int16, c_int32, c_uint32, c_float, create_string_buffer, byref
+from ctypes import c_int16, c_int32, c_uint32, c_float, create_string_buffer, byref, c_long
 from ctypes.util import find_library
 import collections
 import picosdk.constants as constants
@@ -108,7 +108,11 @@ class Library(object):
                 acc.append(c)
             if acc[:2] == ['_', '_']:
                 acc = acc[1:]
-            setattr(self, "".join(acc), c_function)
+            acc1 = "".join(acc)
+            if acc1.endswith('_'): 
+                acc1 = acc1[:-1]
+                setattr(self, acc1, c_function)
+            # setattr(self, "".join(acc), c_function)
 
     def list_units(self):
         """Returns: a list of dictionaries which identify connected devices which use this driver."""
@@ -175,7 +179,10 @@ class Library(object):
             status = self._open_unit(byref(chandle), None)
             handle = chandle.value
         else:
-            handle = self._open_unit()
+            # handle = self._open_unit()
+            chandle = c_int16()
+            status = self._open_unit(byref(chandle), None)
+            handle = chandle.value
 
         return handle, status
 
@@ -236,7 +243,7 @@ class Library(object):
                                          info,
                                          c_int16(string_size),
                                          byref(required_size),
-                                         c_uint32(info_type))
+                                         c_long(info_type))
             if status == self.PICO_STATUS['PICO_OK']:
                 if required_size.value < string_size:
                     return info.value[:required_size.value]

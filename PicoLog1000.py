@@ -71,6 +71,7 @@ class PicoLog1000:
         self.reconnect_enabled = False
         self.reconnect_timeout = 1.0
         self.reconnect_count = 3
+        # self.u = pl1000.list_units()
 
     # def __del__(self):
     #     pass
@@ -90,6 +91,7 @@ class PicoLog1000:
         except:
             self.opened = False
             log_exception('Can not open picolog', exc_info=False)
+        return self.opened
 
     def assert_open(self):
         if self.handle is None or not self.opened:
