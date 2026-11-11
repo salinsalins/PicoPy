@@ -587,7 +587,7 @@ class PicoPyServer(TangoServerPrototype):
                 value = result.value
                 t_a = result.time.totime()
                 deltat = t_a - (t_0 + t_1)/2.
-                # self.logger.debug(f'Form attribute {self.time_shift_value}: value {value} time: {t_a} reading time: {t_1 - t_0} deltat: {delta}')
+                self.logger.debug(f'Form attribute {self.time_shift_value}: value {value} time: {t_a} reading time: {t_1 - t_0} deltat: {deltat}')
                 self.logger.debug(f'Clock difference  {deltat * 1e3} ms')
                 fvalue = self.picolog.recording_end_time - float(value) - self.picolog.record_us * 1e-6 + deltat
                 if abs(fvalue) < 3.6e3:
@@ -743,8 +743,10 @@ class PicoPyServer(TangoServerPrototype):
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
-            trigger_offset = self.read_read_channel_record_time_us() * 1e3 / self.read_trigger() * self.read_points_per_channel()
-            data = self.picolog.times[channel_index, :] - trigger_offset + float(self.read_time_shift()) 
+            td = self.config.get('trigger_delay', 0.0)
+            trigger_offset = 1.0e-3 * self.read_channel_record_time_us() * td / 100.0
+            print(trigger_offset, 1.0e-3 * self.read_channel_record_time_us(), self.read_trigger(), self.read_points_per_channel())
+            data = self.picolog.times[channel_index, :] + (trigger_offset + float(self.read_time_shift())) 
         else:
             data = self.picolog.data[channel_index, :]
         self.logger.debug('%s Reading %s %s', self.device_name, channel_name, data.shape)
