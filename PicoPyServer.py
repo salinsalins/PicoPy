@@ -25,7 +25,7 @@ from TangoUtils import split_attribute_name
 
 from PicoLog1000 import *
 
-import debugpy
+# import debugpy
 
 def list_from_str(input_str):
     try:
@@ -462,7 +462,7 @@ class PicoPyServer(TangoServerPrototype):
                       doc="ADC acquisition times for all channels. 32 bit floats in ms")
 
     def init_device(self):
-        self.picolog = None
+        self.picolog = PicoLog1000()
         self.device_type_str = "Unknown PicoLog device"
         self.device_name = ''
         self.time_shift_value = ''
@@ -600,7 +600,7 @@ class PicoPyServer(TangoServerPrototype):
         return str(self.time_shift_time)
 
     def write_time_shift(self, value):
-        self.time_shift_value = value
+        self.time_shift_value = str(value)
         self.config['time_shift'] = self.time_shift_value
         self.write_config_to_properties()
         self.read_time_shift() 
@@ -743,7 +743,7 @@ class PicoPyServer(TangoServerPrototype):
             return empty_array(xy)
         channel_index = self.picolog.channels.index(channel)
         if 'x' == xy[0].lower():
-            trigger_offset = self.read_read_channel_record_time_us() * 1e3 / self.read_trigger() * self.read_points_per_channel()
+            trigger_offset = self.read_channel_record_time_us() * 1e3 / self.read_trigger() * self.read_points_per_channel()
             data = self.picolog.times[channel_index, :] - trigger_offset + float(self.read_time_shift()) 
         else:
             data = self.picolog.data[channel_index, :]
