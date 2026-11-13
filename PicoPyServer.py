@@ -745,7 +745,7 @@ class PicoPyServer(TangoServerPrototype):
         if 'x' == xy[0].lower():
             td = self.config.get('trigger_delay', 0.0)
             trigger_offset = 1.0e-3 * self.read_channel_record_time_us() * td / 100.0
-            print(trigger_offset, 1.0e-3 * self.read_channel_record_time_us(), self.read_trigger(), self.read_points_per_channel())
+            # print(trigger_offset, 1.0e-3 * self.read_channel_record_time_us(), self.read_trigger(), self.read_points_per_channel())
             data = self.picolog.times[channel_index, :] + (trigger_offset + float(self.read_time_shift())) 
         else:
             data = self.picolog.data[channel_index, :]
