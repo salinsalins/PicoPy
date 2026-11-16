@@ -172,10 +172,11 @@ class PicoLog1000:
 
     def check_limits(self, n_channels, points_per_channel, total_record_time):
         flag = True
+        nc = n_channels
         if not isinstance(n_channels, int):
             nc = len(n_channels)
         if nc <= 0 or nc > 16:
-            self.logger.error('Channels can not be < 1 or > 16')
+            self.logger.warning('Channels can not be < 1 or > 16')
             return flag, n_channels, points_per_channel, total_record_time
         total_points = nc * points_per_channel
         if total_points > MAX_CAPTURE_SIZE:
@@ -194,7 +195,7 @@ class PicoLog1000:
             total_record_time = int(total_points * interval)
         return flag, n_channels, points_per_channel, total_record_time
 
-    def set_timing(self, channels, channel_points, channel_record_us):
+    def set_timing(self, channels: list, channel_points: int, channel_record_us: int):
         nc = len(channels)
         if nc < 0:
             self.logger.error('Cannot be 0 or less channels')
@@ -206,7 +207,7 @@ class PicoLog1000:
             cp = MAX_CAPTURE_SIZE // nc
             total_points = nc * cp
             # return False
-        interval = float(channel_record_us) / total_points
+        interval = float(channel_record_us) / (total_points - 1)
         cr = channel_record_us
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
             self.logger.error('Requested recording is too fast - corrected')
@@ -214,7 +215,8 @@ class PicoLog1000:
                 interval = 1
             if total_points > US_LIMIT:
                 interval = 10
-            cr = total_points * interval
+            cr = int(total_points * interval)
+            self.logger.warning('Requested recording is too fast - corrected to %s for point', interval)
         self.assert_open()
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
