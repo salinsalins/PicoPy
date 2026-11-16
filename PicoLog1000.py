@@ -134,6 +134,8 @@ class PicoLog1000:
                                                             ctypes.byref(length), v)
                 assert_pico_ok(self.last_status)
                 for j in range(len(out_info) - 1):
+                    if out_info[j] == 0:
+                        break
                     self.info[i] += chr(out_info[j])
             except KeyboardInterrupt:
                 raise
@@ -182,7 +184,7 @@ class PicoLog1000:
         if total_points > MAX_CAPTURE_SIZE:
             self.logger.error('Too many points requested - truncated fo %s' % MAX_CAPTURE_SIZE)
             points_per_channel = MAX_CAPTURE_SIZE // nc
-            total_points = nc * channel_points
+            total_points = nc * points_per_channel
             flag = False
         interval = float(total_record_time) / total_points
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
@@ -195,7 +197,7 @@ class PicoLog1000:
             total_record_time = int(total_points * interval)
         return flag, n_channels, points_per_channel, total_record_time
 
-    def set_timing(self, channels, channel_points, channel_record_us):
+    def set_timing(self, channels: list, channel_points: int, channel_record_us: int):
         nc = len(channels)
         if nc < 0:
             self.logger.error('Cannot be 0 or less channels')
@@ -206,7 +208,7 @@ class PicoLog1000:
             self.logger.warning('Too many points requested - truncated to %s' % MAX_CAPTURE_SIZE)
             cp = MAX_CAPTURE_SIZE // nc
             total_points = nc * cp
-        interval = float(channel_record_us) / total_points
+        interval = float(channel_record_us) / (total_points - 1)
         cr = channel_record_us
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
             if total_points <= US_LIMIT:
