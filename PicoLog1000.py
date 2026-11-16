@@ -170,12 +170,13 @@ class PicoLog1000:
             status = self.last_status
         return status == PICO_STATUS['PICO_OK']
 
-    def check_limits(self, n_channels, points_per_channel, total_record_time):
+    def check_limits(self, n_channels, points_per_channel: int, total_record_time: int):
         flag = True
+        nc = n_channels
         if not isinstance(n_channels, int):
             nc = len(n_channels)
         if nc <= 0 or nc > 16:
-            self.logger.error('Channels can not be < 1 or > 16')
+            self.logger.warning('Channels can not be < 1 or > 16')
             return flag, n_channels, points_per_channel, total_record_time
         total_points = nc * points_per_channel
         if total_points > MAX_CAPTURE_SIZE:
@@ -199,22 +200,21 @@ class PicoLog1000:
         if nc < 0:
             self.logger.error('Cannot be 0 or less channels')
             return False
-        cp = channel_points
-        total_points = nc * channel_points
+        cp = int(channel_points)
+        total_points = int(nc * channel_points)
         if total_points > MAX_CAPTURE_SIZE:
-            self.logger.error('Too many points requested - truncated fo %s' % MAX_CAPTURE_SIZE)
+            self.logger.warning('Too many points requested - truncated to %s' % MAX_CAPTURE_SIZE)
             cp = MAX_CAPTURE_SIZE // nc
             total_points = nc * cp
-            # return False
         interval = float(channel_record_us) / total_points
         cr = channel_record_us
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
-            self.logger.error('Requested recording is too fast - corrected')
             if total_points <= US_LIMIT:
                 interval = 1
-            if total_points > US_LIMIT:
+            else:
                 interval = 10
-            cr = total_points * interval
+            self.logger.warning('Requested recording is too fast - interval corrected to %s us', interval)
+            cr = int(total_points * interval)
         self.assert_open()
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
@@ -231,20 +231,20 @@ class PicoLog1000:
             self.logger.warning('PicoLog: number of points corrected from %s to %s us',
                                 channel_points, self.points)
         if self.record_us != channel_record_us:
-            self.logger.warning('PicoLog: channel record time has been corrected from %s to %s us',
+            self.logger.warning('PicoLog: channel record time corrected from %s to %s us',
                                 channel_record_us, self.record_us)
         self.sampling = (0.001 * self.record_us) / self.points
-        self.logger.debug('PicoLog Timing: %s channels %s; sampling %s ms; %s points; duration %s us',
+        self.logger.debug('PicoLog Timing: %s channels %s; sampling %s ms; %s points; record duration %s us',
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
         # create array for data
         self.data = np.empty((len(self.channels), self.points), dtype=np.uint16, order='F')
-        # and timings
-        # fill timings array
+        # and timing
+        # fill timing array
         self.t = np.linspace(0.0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
         self.times = np.empty(self.data.shape, dtype=np.float32)
         for i in range(len(self.channels)):
             self.times[i, :] = self.t + (i * self.sampling / len(self.channels))
-
+        self.t = None
         if self.points != channel_points or self.record_us != channel_record_us:
             return False
         return True

@@ -3,4 +3,4 @@
 /.vscode/
 __*__/
 *.pyc
-
+*_rc.py
