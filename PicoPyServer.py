@@ -675,13 +675,16 @@ class PicoPyServer(TangoServerPrototype):
         return self.picolog.points
 
     def write_points_per_channel(self, value):
+        self.logger.debug('****** 1')
         last = self.config.get('points_per_channel', 1000)
         if self.record_initiated:
+            self.logger.debug('****** 2')
             self.logger.info('Writing forbidden till the end of recording')
             self.points_per_channel.set_write_value(last)
             self.set_status('Writing forbidden till the end of recording')
             return
         try:
+            self.logger.debug('****** 3')
             self.config['points_per_channel'] = int(value)
             self.set_sampling()
         except KeyboardInterrupt:
@@ -1029,6 +1032,7 @@ class PicoPyServer(TangoServerPrototype):
         self.record_in_progress.set_write_value(self.record_initiated)
 
     def set_sampling(self, channels_list=None, points=None, record_us=None):
+        self.logger.debug('****** 5')
         try:
             self.assert_picolog_open()
             if channels_list is None:
