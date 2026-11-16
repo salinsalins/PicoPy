@@ -134,6 +134,8 @@ class PicoLog1000:
                                                             ctypes.byref(length), v)
                 assert_pico_ok(self.last_status)
                 for j in range(len(out_info) - 1):
+                    if out_info[j] == 0:
+                        break
                     self.info[i] += chr(out_info[j])
             except KeyboardInterrupt:
                 raise
