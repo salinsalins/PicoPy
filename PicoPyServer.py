@@ -55,6 +55,7 @@ def name_from_number(n: int, xy='y'):
 MAX_DATA_ARRAY_SIZE = 1000000
 MAX_ADC_VALUE = 4095
 MAX_ADC_CHANNELS = 16
+DEFAULT_RECORD_US = 1000
 RECONNECT_WAIT = 5.0
 
 class PicoPyServerError(Exception):
@@ -62,7 +63,7 @@ class PicoPyServerError(Exception):
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '5.0'
+    server_version_value = '5.1'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
     default_config = {'channel_record_time_us': 100000, 'points_per_channel': 1000, 'channels': '[1]'}
@@ -102,13 +103,13 @@ class PicoPyServer(TangoServerPrototype):
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="", format="%d",
-                         doc="Is there the overflow in recorded data")
+                         doc="Is there overflow in recorded data")
 
     sampling = attribute(label="sampling", dtype=float,
                          display_level=DispLevel.OPERATOR,
                          access=AttrWriteType.READ,
                          unit="ms", format="%f",
-                         doc="Sampling in milliseconds - Time between points")
+                         doc="Sampling in milliseconds")
 
     record_in_progress = attribute(label="record_in_progress", dtype=bool,
                                    display_level=DispLevel.OPERATOR,
@@ -128,11 +129,11 @@ class PicoPyServer(TangoServerPrototype):
                            unit="", format="",
                            doc="Is data ready for reading")
 
-    channel_record_time_us = attribute(label="channel_record_time_us", dtype=int,
+    channel_record_time_us = attribute(label="channel_record_time", dtype=int,
                                        min_value=10,
                                        display_level=DispLevel.OPERATOR,
                                        access=AttrWriteType.READ_WRITE,
-                                       unit="us", format="%9d",
+                                       unit="mks", format="%9d",
                                        doc="Channel record time in microseconds")
 
     points_per_channel = attribute(label="points_per_channel", dtype=int,
@@ -675,16 +676,13 @@ class PicoPyServer(TangoServerPrototype):
         return self.picolog.points
 
     def write_points_per_channel(self, value):
-        self.logger.debug('****** 1')
         last = self.config.get('points_per_channel', 1000)
         if self.record_initiated:
-            self.logger.debug('****** 2')
             self.logger.info('Writing forbidden till the end of recording')
             self.points_per_channel.set_write_value(last)
             self.set_status('Writing forbidden till the end of recording')
             return
         try:
-            self.logger.debug('****** 3')
             self.config['points_per_channel'] = int(value)
             self.set_sampling()
         except KeyboardInterrupt:
@@ -1031,31 +1029,34 @@ class PicoPyServer(TangoServerPrototype):
         self.channels.set_write_value(str(self.config['channels']))
         self.record_in_progress.set_write_value(self.record_initiated)
 
-    def set_sampling(self, channels_list=None, points=None, record_us=None):
-        self.logger.debug('****** 5')
+    def set_sampling(self, channels_list: list|None = None, points: int|None =None, record_us: int|None =None):
         try:
             self.assert_picolog_open()
+            # strict control of args
             if channels_list is None:
                 channels_list = list_from_str(self.config.get('channels', '[1]'))
+            else:
+                channels_list = list(channels_list)
             if points is None:
                 points = int(self.config.get('points_per_channel', 1000))
+            else:
+                points = int(points)
             if record_us is None:
-                record_us = int(self.config.get('channel_record_time_us', MAX_DATA_ARRAY_SIZE))
+                record_us = int(self.config.get('channel_record_time_us', DEFAULT_RECORD_US))
+            else:
+                record_us = int(record_us)
             self.picolog.set_timing(channels_list, points, record_us)
             self.data_ready_value = False
-
             if self.config['channel_record_time_us'] != record_us:
                 self.channel_record_time_us.set_quality(AttrQuality.ATTR_INVALID)
                 # self.channel_record_time_us.set_write_value(int(self.config['channel_record_time_us']))
             self.config['channel_record_time_us'] = self.picolog.record_us
             self.properties['channel_record_time_us'] = self.config['channel_record_time_us']
-
             if self.config['points_per_channel'] != points:
-                self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
+                # self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
                 self.points_per_channel.set_quality(AttrQuality.ATTR_INVALID)
             self.config['points_per_channel'] = self.picolog.points
             self.properties['points_per_channel'] = self.config['points_per_channel']
-
             # self.points_per_channel.set_write_value(int(self.config['points_per_channel']))
         except:
             log_exception()

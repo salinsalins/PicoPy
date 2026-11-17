@@ -67,9 +67,14 @@ class Library(object):
     def _load(self):
         library_path = find_library(self.name)
         if library_path is None:
-            lp = "/opt/PicoLog/resources/libpl1000.so"
+            lp = "/home/sanin/PycharmProjects/PicoPy/picosdk/libpl1000.so"
+            # lp = "/opt/PicoLog/resources/libpl1000.so"
             if os.path.isfile(lp):
                 library_path = lp
+            else:
+                lp = "/opt/PicoLog/resources/libpl1000.so"
+                if os.path.isfile(lp):
+                    library_path = lp
         if library_path is None:
             env_var_name = "PATH" if sys.platform == 'win32' else "LD_LIBRARY_PATH"
             raise CannotFindPicoSDKError("PicoSDK (%s) not found, check %s" % (self.name, env_var_name))

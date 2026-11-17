@@ -199,28 +199,34 @@ class PicoLog1000:
 
     def set_timing(self, channels: list, channel_points: int, channel_record_us: int):
         nc = len(channels)
-        if nc < 0:
-            self.logger.error('Cannot be 0 or less channels')
-            return False
         cp = int(channel_points)
-        total_points = int(nc * channel_points)
+        cr = int(channel_record_us)
+        if nc <= 0:
+            self.logger.error('Cannot be 0 or less channels')
+            nc = None
+            self.logger.debug('\nReturned %s %s %s', nc, cp, cr)
+            return nc, cp, cr
+        total_points = int(nc * cp)
         if total_points > MAX_CAPTURE_SIZE:
             self.logger.warning('Too many points requested - truncated to %s' % MAX_CAPTURE_SIZE)
             cp = MAX_CAPTURE_SIZE // nc
-            total_points = nc * cp
-        interval = float(channel_record_us) / (total_points - 1)
-        cr = channel_record_us
+            total_points = int(nc * cp)
+            self.logger.debug('\nTotal points corrected %s', total_points)
+        interval = float(cr) / nc
         if (total_points <= US_LIMIT and interval < 1.0) or (total_points > US_LIMIT and interval < 10.0):
             if total_points <= US_LIMIT:
-                interval = 1
+                interval = 1.
             else:
-                interval = 10
+                interval = 10.
             self.logger.warning('Requested recording is too fast - interval corrected to %s us', interval)
             cr = int(total_points * interval)
+            self.logger.debug('\nRecord time correrced %s', cr)
         self.assert_open()
         cnls = (ctypes.c_int16 * nc)()
         for i in range(nc):
-            cnls[i] = channels[i]
+            v = int(channels[i])
+            channels[i] = v
+            cnls[i] = v
         t_us = ctypes.c_uint32(cr)
         n = ctypes.c_uint32(cp)
         self.last_status = pl1000.pl1000SetInterval(self.handle, ctypes.byref(t_us),
@@ -229,27 +235,27 @@ class PicoLog1000:
         self.channels = channels
         self.points = n.value
         self.record_us = t_us.value
-        if self.points != channel_points:
+        if self.points != cp:
             self.logger.warning('PicoLog: number of points corrected from %s to %s us',
-                                channel_points, self.points)
-        if self.record_us != channel_record_us:
+                                cp, self.points)
+            cp = n.value
+        if self.record_us != cr:
             self.logger.warning('PicoLog: channel record time corrected from %s to %s us',
-                                channel_record_us, self.record_us)
-        self.sampling = (0.001 * self.record_us) / self.points
-        self.logger.debug('PicoLog Timing: %s channels %s; sampling %s ms; %s points; record duration %s us',
+                                cr, self.record_us)
+            cr = t_us.value
+        self.sampling = self.record_us / self.points / 1000.0
+        self.logger.debug('\nPicoLog Timing: %s channels %s; \nsampling %s mks; %s points; record duration %s mks',
                           len(self.channels), self.channels, self.sampling, self.points, self.record_us)
-        # create array for data
+        # create and fill arrays for data and timing
         self.data = np.empty((len(self.channels), self.points), dtype=np.uint16, order='F')
-        # and timing
-        # fill timing array
-        self.t = np.linspace(0.0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
         self.times = np.empty(self.data.shape, dtype=np.float32)
+        self.t = np.linspace(0.0, (self.points - 1) * self.sampling, self.points, dtype=np.float32)
+        # correct timing for channels
         for i in range(len(self.channels)):
             self.times[i, :] = self.t + (i * self.sampling / len(self.channels))
+        # drop array for gc
         self.t = None
-        if self.points != channel_points or self.record_us != channel_record_us:
-            return False
-        return True
+        return nc, cp, cr
 
     def start_recording(self, n_values=None, mode="BM_SINGLE"):
         # start data recording
