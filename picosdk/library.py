@@ -67,12 +67,12 @@ class Library(object):
     def _load(self):
         library_path = find_library(self.name)
         if library_path is None:
-            lp = "/home/sanin/PycharmProjects/PicoPy/picosdk/libpl1000.so"
-            # lp = "/opt/PicoLog/resources/libpl1000.so"
+            lp = "/home/sanin/PycharmProjects/PicoPy/picosdk/lib" + self.name + ".so"
             if os.path.isfile(lp):
                 library_path = lp
             else:
-                lp = "/opt/PicoLog/resources/libpl1000.so"
+                # lp = "/opt/PicoLog/resources/libpl1000.so"
+                lp = "/opt/PicoLog/resources/lib" + self.name + ".so"
                 if os.path.isfile(lp):
                     library_path = lp
         if library_path is None:

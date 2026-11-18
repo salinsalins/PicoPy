@@ -63,7 +63,7 @@ class PicoPyServerError(Exception):
 
 
 class PicoPyServer(TangoServerPrototype):
-    server_version_value = '5.1'
+    server_version_value = '5.2'
     server_name_value = 'PicoLog1000 series Tango device server'
     device_list = []
     default_config = {'channel_record_time_us': 100000, 'points_per_channel': 1000, 'channels': '[1]'}
@@ -888,12 +888,18 @@ class PicoPyServer(TangoServerPrototype):
     def ready(self):
         try:
             self.assert_picolog_open()
-            return self.picolog.ready()
+            if self.picolog.ready():
+                self.set_state(DevState.STANDBY)
+                self.set_status('Data ready')
+                return True
+            return False
         except KeyboardInterrupt:
             raise
         except:
             log_exception(self, '%s Readiness query error', self.device_name, level=logging.WARNING)
-            return False
+            self.set_state(DevState.FAULT)
+            self.set_status('Readiness query error')
+        return False
 
     @command(dtype_in=int, dtype_out=bool)
     def _start(self, value=0):
@@ -941,7 +947,6 @@ class PicoPyServer(TangoServerPrototype):
         # set trigger
         self.set_trigger()
         self.time_shift_value = self.config.get('time_shift', '0.0')
-        self.logger.debug('from properties %s' % self.time_shift_value)
         self.time_shift.set_write_value(self.time_shift_value)
 
     @command(dtype_in=None)
@@ -978,9 +983,11 @@ class PicoPyServer(TangoServerPrototype):
                 if not self.picolog.opened:
                     raise PicoPyServerError('Can not open Picolog')
                 return True
-            self.logger.warning('Wrong Picolog status %s ' % status)
+            self.logger.info('Picolog returned %s ' % status)
             if status == 'PICO_INVALID_PARAMETER':
-                return False
+                return True
+            if status == 'PICO_DRIVER_FUNCTION':
+                return True
             raise PicoPyServerError('Wrong Picolog status %s ' % status)
         else:
             self.record_initiated = False

@@ -13,7 +13,7 @@ if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.re
 from config_logger import config_logger
 from log_exception import log_exception
 from picosdk.constants import PICO_STATUS
-from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError
+from picosdk.errors import ClosedDeviceError, ArgumentOutOfRangeError, PicoSDKCtypesError
 from picosdk.pl1000 import pl1000
 from picosdk.functions import assert_pico_ok
 
@@ -278,16 +278,28 @@ class PicoLog1000:
         self.read_time = 0.0
 
     def ready(self):
-        self.assert_open()
-        ready = ctypes.c_int16(0)
-        self.last_status = pl1000.pl1000Ready(self.handle, ctypes.byref(ready))
-        assert_pico_ok(self.last_status)
-        if ready.value:
-            if self.recording_end_time == 0.0:
-                self.recording_end_time = time.time()
-        return ready.value
+        try:
+            self.assert_open()
+            ready = ctypes.c_int16(0)
+            t1 = time.time()
+            self.last_status = pl1000.pl1000Ready(self.handle, ctypes.byref(ready))
+            t2 = time.time()
+            assert_pico_ok(self.last_status)
+            if ready.value:
+                # if self.recording_end_time == 0.0:
+                self.recording_end_time = (t1 + t2) / 2.0
+            return ready.value
+        except PicoSDKCtypesError:
+            if self.last_status == PICO_STATUS['PICO_DRIVER_FUNCTION']:
+                return False
+            log_exception()
+        return False
 
     def wait_result(self, timeout=None, use_timer=None):
+        # fast check
+        if self.ready():
+            return True
+        # timer check
         if use_timer is None:
             use_timer = True
             dt = 0.1
@@ -298,7 +310,7 @@ class PicoLog1000:
                 self.logger.debug("Incorrect timer operation")
                 use_timer = False
         if timeout is None:
-            timeout = self.record_us * 1e-6 +0.05
+            timeout = self.record_us * 1.1e-6 + 0.05
         t0 = time.time()
         i = 0
         while not self.ready():
@@ -307,9 +319,10 @@ class PicoLog1000:
                 i += 1
                 if i*dt > timeout:
                     return False
-            if (time.time() - t0) > timeout:
-                return False
-        return self.ready()
+            else:
+                if (time.time() - t0) > timeout:
+                    return False
+        return True
 
     def read(self, wait=0.0):
         if wait > 0.0:
@@ -335,7 +348,15 @@ class PicoLog1000:
     def stop(self):
         self.assert_open()
         self.last_status = pl1000.pl1000Stop(self.handle)
-        assert_pico_ok(self.last_status)
+        try:
+            assert_pico_ok(self.last_status)
+        except PicoSDKCtypesError as ex:
+            if self.last_status == PICO_STATUS['PICO_DRIVER_FUNCTION']:
+                return
+            raise
+        except:
+            raise
+
 
     def set_trigger(self, enabled=0, channel="PL1000_CHANNEL_1", edge=0,
                     threshold=2048, hysteresis=100, delay_percent=10.0,
